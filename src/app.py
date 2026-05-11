@@ -158,8 +158,7 @@ def run_triage(patient_name, age, sex, chief_complaint, symptoms, vitals, histor
 # ─────────────────────────────────────────────────────────────────────────────
 # GRADIO UI — Builds the browser interface
 # ─────────────────────────────────────────────────────────────────────────────
-with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
-
+with gr.Blocks(title="BeatSafe") as app:
     # ── Header ──
     gr.HTML("""
         <div class="header-block">
