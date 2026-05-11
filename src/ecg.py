@@ -16,7 +16,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Gemini model to use — Flash is fast and supports image input
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = "gemini-1.5-flash-latest"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ECG ANALYSIS PROMPT — Instructs Gemini on how to read the ECG image
