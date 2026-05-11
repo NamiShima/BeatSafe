@@ -16,7 +16,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Gemma 4 model — the competition model, supports multimodal input
-GEMMA_MODEL = "models/gemma-4-31b-it"
+GEMMA_MODEL = "models/gemini-2.5-flash"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ECG ANALYSIS PROMPT — Instructs Gemma 4 on how to read the ECG image
