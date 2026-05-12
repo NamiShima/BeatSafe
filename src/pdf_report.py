@@ -1,3 +1,10 @@
+from fpdf import FPDF                  # PDF generation library
+from fpdf.enums import XPos, YPos      # Updated position enums for fpdf2 v2.5+
+from datetime import datetime          # Timestamp for the report
+import os                              # File path operations
+import urllib.request                  # Download Unicode font if not present
+import uuid                            # Generate unique attendance code
+
 # ─────────────────────────────────────────────────────────────────────────────
 # UNICODE FONT SETUP — DejaVu supports full Portuguese characters with accents
 # Downloads the font automatically if not present in the src/ folder
@@ -182,85 +189,91 @@ def get_risk_color(risk_text: str) -> tuple:
         return COLOR_GREEN
 
 
+def truncate_triage(text: str, max_chars: int = 900) -> str:
+    """
+    Truncates long AI triage output to keep the PDF within one page.
+    Keeps only the most clinically relevant sections:
+    risk level, alert signs, recommended conduct and referral.
+
+    Args:
+        text:      Full triage output text from Gemma 3
+        max_chars: Maximum characters to include (default 900)
+
+    Returns:
+        Shortened text with only the key clinical sections
+    """
+
+    # Extract only the sections that matter most for the agent
+    priority_keywords = [
+        "ALTO RISCO", "RISCO MODERADO", "BAIXO RISCO",
+        "AVALIAÇÃO", "AVALIACAO",
+        "SINAIS DE ALERTA",
+        "CONDUTA RECOMENDADA", "CONDUTA",
+        "ENCAMINHAMENTO",
+    ]
+
+    lines = text.split("\n")
+    result = []
+    char_count = 0
+
+    for line in lines:
+        # Always include risk level line and section headers
+        line_upper = line.upper()
+        is_priority = any(kw in line_upper for kw in priority_keywords)
+
+        # Skip verbose sections to save space
+        skip_keywords = ["ORIENTAÇÕES AO PACIENTE", "ORIENTACOES", "ATENÇÃO ESPECIAL", "ATENCAO ESPECIAL", "💊", "⚡"]
+        if any(kw in line_upper for kw in skip_keywords):
+            break  # Stop before patient instructions — least critical for the PDF
+
+        if char_count + len(line) > max_chars and not is_priority:
+            break
+
+        result.append(line)
+        char_count += len(line)
+
+    return "\n".join(result).strip()
+
+
 def add_section(pdf: FPDF, title: str, content: str):
     """
-    Adds a formatted section with dark header bar and clean body text.
-    Uses DejaVu font for full Portuguese accent support.
+    Adds a compact formatted section with dark header bar and clean body text.
+    Truncates AI output to keep the report within one page.
 
     Args:
         pdf:     FPDF instance
         title:   Section header text
-        content: Body text content
+        content: Body text content (will be truncated if too long)
     """
 
-    # Dark section header bar
+    # Dark section header bar — compact height
     pdf.set_fill_color(*COLOR_DARK)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("DejaVu", "B", 9)
-    pdf.cell(0, 7, f"  {title}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.set_font("DejaVu", "B", 8)
+    pdf.cell(0, 6, f"  {title}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
 
-    # Clean body text with full Portuguese support
+    # Truncate long AI output to fit within one page
+    short_content = truncate_triage(content, max_chars=1400)
+
+    # Clean body text — small font, tight line spacing
     pdf.set_text_color(*COLOR_DARK)
-    pdf.set_font("DejaVu", "", 9)
+    pdf.set_font("DejaVu", "", 8)
     pdf.set_left_margin(12)
 
     # Remove markdown formatting symbols from AI output
     clean = (
-        content
+        short_content
         .replace("**", "")
         .replace("##", "")
         .replace("* ", "- ")
         .replace("•", "-")
     )
 
-    pdf.multi_cell(0, 5, clean)
+    pdf.multi_cell(0, 4, clean)
     pdf.set_left_margin(10)
-    pdf.ln(4)
+    pdf.ln(2)
 
 
-def add_framingham_block(pdf: FPDF, framingham: dict):
-    """
-    Adds the Framingham cardiovascular risk block to the report.
-    Uses colored label to match the risk category visually.
-
-    Args:
-        pdf:         FPDF instance
-        framingham:  Dict returned by estimate_framingham()
-    """
-
-    # Section header
-    pdf.set_fill_color(*COLOR_DARK)
-    pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("DejaVu", "B", 9)
-    pdf.cell(
-        0, 7,
-        "  ESCORE DE FRAMINGHAM - Risco Cardiovascular em 10 Anos",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True
-    )
-
-    # Colored risk badge
-    pdf.set_fill_color(*framingham["color"])
-    pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("DejaVu", "B", 10)
-    pdf.set_left_margin(12)
-    pdf.cell(
-        0, 8,
-        f"  Risco: {framingham['risk_label']}   |   Pontuação: {framingham['score']} pontos",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True
-    )
-
-    # Explanatory note
-    pdf.set_left_margin(12)
-    pdf.set_text_color(*COLOR_GRAY)
-    pdf.set_font("DejaVu", "", 8)
-    pdf.multi_cell(
-        0, 5,
-        "Calculado com base em idade, sexo, PA, diabetes e tabagismo (Caderno AB nº14 - MS).\n"
-        "Este escore é uma estimativa de rastreio. Confirmação requer avaliação clínica completa."
-    )
-    pdf.set_left_margin(10)
-    pdf.set_text_color(*COLOR_DARK)
-    pdf.ln(4)
 
 
 def generate_pdf(
@@ -323,37 +336,34 @@ def generate_pdf(
     pdf.add_page()
     pdf.set_margins(10, 10, 10)
 
-    # ── Attendance Code — unique ID for this report ──
-    pdf.set_font("DejaVu", "", 8)
-    pdf.set_text_color(*COLOR_GRAY)
-    pdf.cell(0, 5, f"Código de Atendimento: BS-{attendance_code}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
+    # ── Attendance Code + Patient Info — mesma linha para economizar espaço ──
+    pdf.set_font("DejaVu", "B", 9)
     pdf.set_text_color(*COLOR_DARK)
-    pdf.ln(2)
+    pdf.cell(0, 6, "INFORMAÇÕES DO PACIENTE", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    # ── Patient Information Block ──
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, "INFORMAÇÕES DO PACIENTE", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # Código de atendimento na linha do paciente (direita)
+    pdf.set_font("DejaVu", "", 7)
+    pdf.set_text_color(*COLOR_GRAY)
+    pdf.cell(0, 4, f"Cód: BS-{attendance_code}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
+    pdf.set_text_color(*COLOR_DARK)
 
-    # Light gray background for patient details rows
+    # Dados do paciente em fonte pequena e linhas compactas
     pdf.set_fill_color(*COLOR_LIGHT)
-    pdf.set_font("DejaVu", "", 9)
+    pdf.set_font("DejaVu", "", 8)
     name_display = patient_name if patient_name else "Não informado"
 
-    pdf.cell(0, 6, f"  Nome: {name_display}    |    Idade: {age} anos    |    Sexo: {sex_pt}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Queixa Principal: {chief_complaint}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Sinais Vitais: {vitals}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Sintomas: {symptoms}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Histórico Médico: {history}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Medicamentos: {medications}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.ln(4)
+    pdf.cell(0, 5, f"  Nome: {name_display}  |  Idade: {age} anos  |  Sexo: {sex_pt}  |  Vitais: {vitals}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 5, f"  Queixa: {chief_complaint}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 5, f"  Sintomas: {symptoms}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 5, f"  Histórico: {history}  |  Medicamentos: {medications}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.ln(2)
 
-    # ── Risk Level Indicator — colored banner with icon ──
+    # ── Risk Level Indicator — banner compacto ──
     risk_color = get_risk_color(symptom_triage)
     pdf.set_fill_color(*risk_color)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("DejaVu", "B", 12)
+    pdf.set_font("DejaVu", "B", 11)
 
-    # Select risk label and warning icon based on triage output
     risk_upper = symptom_triage.upper()
     if "ALTO RISCO" in risk_upper:
         risk_label = "⚠ ALTO RISCO - ACAO IMEDIATA NECESSARIA"
@@ -362,65 +372,64 @@ def generate_pdf(
     else:
         risk_label = "✓ BAIXO RISCO - ACOMPANHAMENTO DE ROTINA"
 
-    pdf.cell(0, 10, f"  {risk_label}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 8, f"  {risk_label}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.set_text_color(*COLOR_DARK)
-    pdf.ln(4)
+    pdf.ln(2)
 
-    # ── Framingham Cardiovascular Risk Score Block ──
-    add_framingham_block(pdf, framingham)
-
-    # ── Symptom Triage Section — output from Gemma 3 ──
-    add_section(pdf, "TRIAGEM POR SINTOMAS - Gemma 3 (Local, Offline)", symptom_triage)
-
-    # ── ECG Analysis Section — only included when an ECG image was provided ──
-    if ecg_analysis and ecg_analysis != "Nenhuma imagem de ECG fornecida.":
-        add_section(pdf, "ANALISE DO ECG - Gemini Flash (Nuvem)", ecg_analysis)
-
-    # ── Final Combined Recommendation — only shown when different from triage ──
-    if final_recommendation and final_recommendation != symptom_triage:
-        add_section(pdf, "RECOMENDACAO FINAL COMBINADA", final_recommendation)
-
-    # ── Health Agent Signature Block ──
-    pdf.set_fill_color(*COLOR_LIGHT)
-    pdf.set_font("DejaVu", "B", 9)
-    pdf.set_text_color(*COLOR_DARK)
-    pdf.cell(0, 7, "  IDENTIFICACAO DO AGENTE DE SAUDE", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-
-    pdf.set_font("DejaVu", "", 9)
-    agent_display  = agent_name if agent_name else "___________________________________"
-    agent_id_display = agent_id if agent_id else "_______________"
-    pdf.set_left_margin(12)
-    pdf.cell(0, 6, f"Nome: {agent_display}    |    Registro: {agent_id_display}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-
-    # Signature line
-    pdf.ln(6)
-    pdf.set_font("DejaVu", "", 8)
-    pdf.set_text_color(*COLOR_GRAY)
-    pdf.cell(90, 5, "Assinatura do Agente:", new_x=XPos.RIGHT, new_y=YPos.TOP)
-    pdf.cell(90, 5, f"Data: {datetime.now().strftime('%d/%m/%Y')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
-    pdf.ln(8)
-    pdf.set_left_margin(12)
-    pdf.line(12, pdf.get_y(), 90, pdf.get_y())   # Signature underline
-    pdf.set_left_margin(10)
-    pdf.ln(6)
-
-    # ── Emergency Reference Block ──
-    pdf.set_fill_color(*COLOR_RED)
+    # ── Framingham — linha única compacta ──
+    pdf.set_fill_color(*framingham["color"])
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("DejaVu", "B", 10)
+    pdf.set_font("DejaVu", "B", 8)
     pdf.cell(
-        0, 8,
-        "  EM CASO DE EMERGENCIA - LIGUE SAMU 192 IMEDIATAMENTE",
+        0, 6,
+        f"  FRAMINGHAM: {framingham['risk_label']}  |  Pontuação: {framingham['score']} pts  "
+        f"(Caderno AB nº14 - MS)",
         new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True
     )
     pdf.set_text_color(*COLOR_DARK)
     pdf.ln(2)
 
-    # ── Generation timestamp and attendance code ──
+    # ── Triagem por sintomas — principal conteúdo clínico ──
+    add_section(pdf, "TRIAGEM POR SINTOMAS - Gemma 3 (Local, Offline)", symptom_triage)
+
+    # ── ECG — apenas se houver imagem ──
+    if ecg_analysis and ecg_analysis != "Nenhuma imagem de ECG fornecida.":
+        add_section(pdf, "ANALISE DO ECG - Gemini Flash (Nuvem)", ecg_analysis)
+
+    # ── Recomendação final — apenas se diferente da triagem ──
+    if final_recommendation and final_recommendation != symptom_triage:
+        add_section(pdf, "RECOMENDACAO FINAL COMBINADA", final_recommendation)
+
+    # ── Agente de saúde — linha única compacta ──
+    pdf.set_fill_color(*COLOR_LIGHT)
     pdf.set_font("DejaVu", "", 8)
+    pdf.set_text_color(*COLOR_DARK)
+    agent_display    = agent_name if agent_name else "________________________________"
+    agent_id_display = agent_id   if agent_id   else "_____________"
+    pdf.cell(
+        0, 5,
+        f"  Agente: {agent_display}  |  Registro: {agent_id_display}  |  Data: {datetime.now().strftime('%d/%m/%Y')}",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True
+    )
+    pdf.ln(2)
+
+    # ── Bloco de emergência ──
+    pdf.set_fill_color(*COLOR_RED)
+    pdf.set_text_color(*COLOR_WHITE)
+    pdf.set_font("DejaVu", "B", 9)
+    pdf.cell(
+        0, 7,
+        "  EM CASO DE EMERGENCIA - LIGUE SAMU 192 IMEDIATAMENTE",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True
+    )
+    pdf.set_text_color(*COLOR_DARK)
+    pdf.ln(1)
+
+    # ── Timestamp rodapé ──
+    pdf.set_font("DejaVu", "", 7)
     pdf.set_text_color(*COLOR_GRAY)
     pdf.cell(
-        0, 6,
+        0, 5,
         f"Relatorio gerado pelo BeatSafe em {datetime.now().strftime('%d/%m/%Y as %H:%M:%S')}  |  Codigo: BS-{attendance_code}",
         new_x=XPos.LMARGIN, new_y=YPos.NEXT
     )
@@ -441,21 +450,27 @@ if __name__ == "__main__":
     sample_triage = """ALTO RISCO
 
 AVALIACAO:
-O paciente apresenta quadro de dor toracica tipica, com caracteristicas sugestivas de sindrome coronariana aguda. A irradiacao para o braco esquerdo, a falta de ar, a sudorese fria e a nausea reforcam essa suspeita.
+O paciente apresenta quadro de dor toracica tipica, com caracteristicas sugestivas de sindrome coronariana aguda (provavel angina instavel ou infarto agudo do miocardio - IAM). A dor opressiva, com irradiacao para o braco esquerdo, associada a falta de ar, sudorese fria e nauseas, sao sinais classicos de alerta. A hipertensao e diabetes preexistentes, apesar do uso de medicamentos, elevam o risco cardiovascular. A pressao arterial elevada (165/105 mmHg), frequencia cardiaca acelerada (102 bpm) e saturacao de oxigenio baixa (91%) indicam instabilidade hemodinamica. A ausencia de historico previo de angina ou IAM nao exclui o evento agudo.
 
 SINAIS DE ALERTA IDENTIFICADOS:
-- Dor toracica tipica com irradiacao
+- Dor toracica tipica com irradiacao para o braco esquerdo
 - Falta de ar (dispneia)
 - Sudorese fria
-- Hipertensao grave (165/105 mmHg)
+- Nauseas
+- Hipertensao arterial nao controlada (165/105 mmHg)
+- Taquicardia (FC 102 bpm)
+- Hipoxemia (SatO2 91%)
 
 CONDUTA RECOMENDADA:
-1. Acionar SAMU 192 imediatamente
-2. Manter paciente em repouso semi-sentado
-3. Administrar oxigenio se SatO2 < 94%
+1. Acionar SAMU 192 imediatamente — relatar suspeita de IAM
+2. Colocar paciente em posicao semi-sentada para facilitar respiracao
+3. Administrar oxigenio suplementar para manter SatO2 acima de 94%
+4. Monitorar sinais vitais a cada 5 minutos
+5. Nao administrar nenhuma medicacao sem orientacao medica
+6. Manter paciente calmo e imobilizado ate chegada do socorro
 
 ENCAMINHAMENTO:
-SAMU 192 - URGENCIA MAXIMA"""
+SAMU 192 - URGENCIA MAXIMA. Paciente necessita de ECG, marcadores cardiacos e possivel intervencao coronariana (angioplastia) com urgencia."""
 
     output = generate_pdf(
         patient_name="Joao Silva",
