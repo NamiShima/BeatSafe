@@ -1,7 +1,25 @@
-from fpdf import FPDF          # PDF generation library
-from fpdf.enums import XPos, YPos  # Updated position enums for fpdf2 v2.5+
-from datetime import datetime  # Timestamp for the report
-import os                      # File path operations
+from fpdf import FPDF                  # PDF generation library
+from fpdf.enums import XPos, YPos      # Updated position enums for fpdf2 v2.5+
+from datetime import datetime          # Timestamp for the report
+import os                              # File path operations
+import urllib.request                  # Download Unicode font if not present
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNICODE FONT SETUP — DejaVu supports full Portuguese characters with accents
+# Downloads the font automatically if not present in the src/ folder
+# ─────────────────────────────────────────────────────────────────────────────
+FONT_URL = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+FONT_BOLD_URL = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
+FONT_PATH = "DejaVuSans.ttf"
+FONT_BOLD_PATH = "DejaVuSans-Bold.ttf"
+
+def ensure_fonts():
+    """Downloads DejaVu fonts if not already present locally."""
+    if not os.path.exists(FONT_PATH):
+        print("Downloading Unicode font for Portuguese support...")
+        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+    if not os.path.exists(FONT_BOLD_PATH):
+        urllib.request.urlretrieve(FONT_BOLD_URL, FONT_BOLD_PATH)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLOR PALETTE — Consistent with BeatSafe dark medical theme
@@ -17,7 +35,7 @@ COLOR_WHITE  = (255, 255, 255)
 class BeatSafeReport(FPDF):
     """
     Custom PDF class for BeatSafe clinical reports.
-    Extends FPDF with a branded header and footer on every page.
+    Uses DejaVu Unicode font for full Portuguese character support.
     """
 
     def header(self):
@@ -27,23 +45,23 @@ class BeatSafeReport(FPDF):
         self.set_fill_color(*COLOR_RED)
         self.rect(0, 0, 210, 18, 'F')
 
-        # BeatSafe title in white — using hyphen instead of em dash for latin-1 compatibility
-        self.set_font("Helvetica", "B", 14)
+        # BeatSafe title in white using Unicode font
+        self.set_font("DejaVu", "B", 14)
         self.set_text_color(*COLOR_WHITE)
         self.set_xy(10, 4)
         self.cell(
             0, 10,
-            "BEATSAFE - Cardiac Triage Report",
-            new_x=XPos.LMARGIN, new_y=YPos.NEXT  # Updated API for fpdf2 v2.5+
+            "BEATSAFE - Relatório de Triagem Cardíaca",
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT
         )
 
-        # Timestamp on the right side of header
-        self.set_font("Helvetica", "", 8)
+        # Timestamp on the right
+        self.set_font("DejaVu", "", 8)
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
         self.set_xy(140, 6)
         self.cell(60, 6, timestamp, align="R")
 
-        # Reset text color for body content
+        # Reset text color for body
         self.set_text_color(*COLOR_DARK)
         self.ln(8)
 
@@ -51,12 +69,12 @@ class BeatSafeReport(FPDF):
         """Adds disclaimer footer to every page."""
 
         self.set_y(-15)
-        self.set_font("Helvetica", "I", 7)
+        self.set_font("DejaVu", "", 7)
         self.set_text_color(*COLOR_GRAY)
         self.cell(
             0, 10,
-            "BeatSafe supports health workers - it does not replace medical evaluation. "
-            "When in doubt, always refer the patient for in-person assessment. | SAMU 192",
+            "BeatSafe apoia profissionais de saúde - não substitui avaliação médica. "
+            "Em caso de dúvida, encaminhe o paciente para avaliação presencial. | SAMU 192",
             align="C"
         )
 
@@ -73,7 +91,6 @@ def get_risk_color(risk_text: str) -> tuple:
     """
 
     risk_upper = risk_text.upper()
-
     if "ALTO RISCO" in risk_upper or "HIGH RISK" in risk_upper:
         return COLOR_RED
     elif "MODERADO" in risk_upper or "MODERATE" in risk_upper:
@@ -82,37 +99,10 @@ def get_risk_color(risk_text: str) -> tuple:
         return COLOR_GREEN
 
 
-def clean_text(text: str) -> str:
-    """
-    Cleans AI output text for PDF compatibility.
-    Removes markdown formatting and replaces special characters
-    that are outside the latin-1 range supported by Helvetica.
-
-    Args:
-        text: Raw AI output text with markdown
-
-    Returns:
-        Clean text safe for PDF rendering
-    """
-
-    return (
-        text
-        .replace("\u2014", "-")   # Em dash to hyphen
-        .replace("\u2013", "-")   # En dash to hyphen
-        .replace("\u2019", "'")   # Smart quote to apostrophe
-        .replace("\u2018", "'")   # Smart quote to apostrophe
-        .replace("\u201c", '"')   # Smart double quote
-        .replace("\u201d", '"')   # Smart double quote
-        .replace("\u2022", "*")   # Bullet to asterisk
-        .replace("**", "")        # Remove bold markdown
-        .replace("##", "")        # Remove heading markdown
-        .replace("* ", "- ")      # Markdown bullets to dashes
-    )
-
-
 def add_section(pdf: FPDF, title: str, content: str):
     """
     Adds a formatted section with dark header bar and clean body text.
+    Uses DejaVu font for full Portuguese accent support.
 
     Args:
         pdf:     FPDF instance
@@ -123,14 +113,24 @@ def add_section(pdf: FPDF, title: str, content: str):
     # Dark section header bar
     pdf.set_fill_color(*COLOR_DARK)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font("DejaVu", "B", 9)
     pdf.cell(0, 7, f"  {title}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
 
-    # Clean body text
+    # Clean body text with full Portuguese support
     pdf.set_text_color(*COLOR_DARK)
-    pdf.set_font("Helvetica", "", 9)
+    pdf.set_font("DejaVu", "", 9)
     pdf.set_left_margin(12)
-    pdf.multi_cell(0, 5, clean_text(content))
+
+    # Remove markdown formatting from AI output
+    clean = (
+        content
+        .replace("**", "")
+        .replace("##", "")
+        .replace("* ", "- ")
+        .replace("•", "-")
+    )
+
+    pdf.multi_cell(0, 5, clean)
     pdf.set_left_margin(10)
     pdf.ln(4)
 
@@ -150,7 +150,8 @@ def generate_pdf(
     output_path: str = "beatsafe_report.pdf"
 ) -> str:
     """
-    Generates a complete BeatSafe PDF clinical report.
+    Generates a complete BeatSafe PDF clinical report with full
+    Portuguese character support via DejaVu Unicode font.
 
     Args:
         patient_name:         Patient name (optional)
@@ -170,79 +171,84 @@ def generate_pdf(
         Path to the generated PDF file
     """
 
-    # Initialize PDF with custom header/footer
+    # Ensure fonts are available before generating PDF
+    ensure_fonts()
+
+    # Initialize PDF with Unicode font support
     pdf = BeatSafeReport()
+    pdf.add_font("DejaVu", "", FONT_PATH)        # Regular weight
+    pdf.add_font("DejaVu", "B", FONT_BOLD_PATH)  # Bold weight
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     pdf.set_margins(10, 10, 10)
 
     # ── Patient Information Block ──
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.set_text_color(*COLOR_DARK)
     pdf.ln(4)
-    pdf.cell(0, 8, "PATIENT INFORMATION", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.set_text_color(*COLOR_DARK)
+    pdf.cell(0, 8, "INFORMAÇÕES DO PACIENTE", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     # Light gray background for patient details
     pdf.set_fill_color(245, 245, 245)
-    pdf.set_font("Helvetica", "", 9)
-    name_display = patient_name if patient_name else "Not provided"
+    pdf.set_font("DejaVu", "", 9)
+    name_display = patient_name if patient_name else "Não informado"
 
-    pdf.cell(0, 6, f"  Name: {name_display}    |    Age: {age} years    |    Sex: {sex}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Chief Complaint: {clean_text(chief_complaint)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Vital Signs: {clean_text(vitals)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Symptoms: {clean_text(symptoms)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Medical History: {clean_text(history)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 6, f"  Medications: {clean_text(medications)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Nome: {name_display}    |    Idade: {age} anos    |    Sexo: {sex}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Queixa Principal: {chief_complaint}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Sinais Vitais: {vitals}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Sintomas: {symptoms}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Histórico Médico: {history}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Medicamentos: {medications}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.ln(4)
 
     # ── Risk Level Indicator ──
     risk_color = get_risk_color(symptom_triage)
     pdf.set_fill_color(*risk_color)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_font("DejaVu", "B", 12)
 
     # Determine risk label from triage output
     risk_upper = symptom_triage.upper()
     if "ALTO RISCO" in risk_upper:
-        risk_label = "HIGH RISK - IMMEDIATE ACTION REQUIRED"
+        risk_label = "ALTO RISCO - AÇÃO IMEDIATA NECESSÁRIA"
     elif "MODERADO" in risk_upper:
-        risk_label = "MODERATE RISK - MEDICAL EVALUATION NEEDED"
+        risk_label = "RISCO MODERADO - AVALIAÇÃO MÉDICA NECESSÁRIA"
     else:
-        risk_label = "LOW RISK - ROUTINE FOLLOW-UP"
+        risk_label = "BAIXO RISCO - ACOMPANHAMENTO DE ROTINA"
 
     pdf.cell(0, 10, f"  {risk_label}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.set_text_color(*COLOR_DARK)
     pdf.ln(4)
 
     # ── Symptom Triage Section ──
-    add_section(pdf, "SYMPTOM TRIAGE - Gemma 3 (Local, Offline)", symptom_triage)
+    add_section(pdf, "TRIAGEM POR SINTOMAS - Gemma 3 (Local, Offline)", symptom_triage)
 
     # ── ECG Analysis Section — only if provided ──
     if ecg_analysis and ecg_analysis != "Nenhuma imagem de ECG fornecida.":
-        add_section(pdf, "ECG ANALYSIS - Gemini 2.5 Flash (Cloud)", ecg_analysis)
+        add_section(pdf, "ANÁLISE DO ECG - Gemini 2.5 Flash (Nuvem)", ecg_analysis)
 
-    # ── Final Combined Recommendation — only if different from symptom triage ──
+    # ── Final Combined Recommendation — only if different ──
     if final_recommendation and final_recommendation != symptom_triage:
-        add_section(pdf, "FINAL COMBINED RECOMMENDATION", final_recommendation)
+        add_section(pdf, "RECOMENDAÇÃO FINAL COMBINADA", final_recommendation)
 
     # ── Emergency Reference Block ──
     pdf.set_fill_color(*COLOR_RED)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(0, 8, "  IN CASE OF EMERGENCY - CALL SAMU 192 IMMEDIATELY", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.set_font("DejaVu", "B", 10)
+    pdf.cell(0, 8, "  EM CASO DE EMERGÊNCIA - LIGUE SAMU 192 IMEDIATAMENTE", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.set_text_color(*COLOR_DARK)
     pdf.ln(2)
 
     # ── Generation timestamp ──
-    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_font("DejaVu", "", 8)
     pdf.set_text_color(*COLOR_GRAY)
     pdf.cell(
         0, 6,
-        f"Report generated by BeatSafe on {datetime.now().strftime('%d/%m/%Y at %H:%M:%S')}",
+        f"Relatório gerado pelo BeatSafe em {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}",
         new_x=XPos.LMARGIN, new_y=YPos.NEXT
     )
 
-    # Save PDF to output path
+    # Save PDF
     pdf.output(output_path)
     return output_path
 
@@ -252,42 +258,40 @@ def generate_pdf(
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
 
-    print("BeatSafe - PDF Report Generator")
+    print("BeatSafe - Gerador de Relatório PDF")
     print("=" * 45)
 
-    # Sample triage output for testing
-    sample_triage = """ALTO RISCO
+    sample_triage = """🔴 ALTO RISCO
 
-AVALIACAO:
-O paciente apresenta quadro de dor toracica tipica, com caracteristicas sugestivas de sindrome coronariana aguda.
+📋 AVALIAÇÃO:
+O paciente apresenta quadro de dor torácica típica, com características sugestivas de síndrome coronariana aguda. A irradiação para o braço esquerdo, a falta de ar, a sudorese fria e a náusea reforçam essa suspeita.
 
-SINAIS DE ALERTA IDENTIFICADOS:
-- Dor toracica tipica com irradiacao
-- Falta de ar
-- Sudorese fria
-- Hipertensao grave (165/105 mmHg)
+⚠️ SINAIS DE ALERTA IDENTIFICADOS:
+• Dor torácica típica com irradiação
+• Falta de ar (dispneia)
+• Sudorese fria
+• Hipertensão grave (165/105 mmHg)
 
-CONDUTA RECOMENDADA:
+✅ CONDUTA RECOMENDADA:
 1. Acionar SAMU 192 imediatamente
 2. Manter paciente em repouso semi-sentado
-3. Administrar oxigenio se SatO2 menor que 94%
+3. Administrar oxigênio se SatO2 < 94%
 
-ENCAMINHAMENTO:
-SAMU 192 - URGENCIA MAXIMA"""
+🏥 ENCAMINHAMENTO:
+SAMU 192 — URGÊNCIA MÁXIMA"""
 
-    # Generate test report
     output = generate_pdf(
-        patient_name="Joao Silva",
+        patient_name="João Silva",
         age=58,
         sex="Male",
-        chief_complaint="Chest pain for 2 hours, radiating to left arm",
-        symptoms="Cold sweating, shortness of breath, nausea",
-        vitals="BP 165/105 mmHg, HR 102 bpm, SpO2 91%",
-        history="Hypertension 10 years, Type 2 Diabetes, former smoker",
-        medications="Metformin, Losartan",
+        chief_complaint="Dor no peito há 2 horas, tipo aperto, irradiando para braço esquerdo",
+        symptoms="Sudorese fria, falta de ar, náusea",
+        vitals="PA 165/105 mmHg, FC 102 bpm, SatO2 91%",
+        history="Hipertensão há 10 anos, Diabetes tipo 2, ex-tabagista",
+        medications="Metformina, Losartana",
         symptom_triage=sample_triage,
         output_path="test_report.pdf"
     )
 
-    print(f"\nPDF generated successfully: {output}")
-    print("Open test_report.pdf to preview the report.")
+    print(f"\n✅ PDF gerado com sucesso: {output}")
+    print("Abra test_report.pdf para visualizar.")
