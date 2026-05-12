@@ -1,17 +1,17 @@
 from fpdf import FPDF          # PDF generation library
+from fpdf.enums import XPos, YPos  # Updated position enums for fpdf2 v2.5+
 from datetime import datetime  # Timestamp for the report
 import os                      # File path operations
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLOR PALETTE — Consistent with BeatSafe dark medical theme
-# Used for section headers and risk level indicators
 # ─────────────────────────────────────────────────────────────────────────────
-COLOR_RED    = (230, 57, 70)    # High risk — urgent
-COLOR_YELLOW = (255, 193, 7)    # Moderate risk — attention
-COLOR_GREEN  = (40, 167, 69)    # Low risk — routine
-COLOR_DARK   = (30, 30, 30)     # Section headers
-COLOR_GRAY   = (100, 100, 100)  # Subtle text
-COLOR_WHITE  = (255, 255, 255)  # Text on dark backgrounds
+COLOR_RED    = (230, 57, 70)
+COLOR_YELLOW = (255, 193, 7)
+COLOR_GREEN  = (40, 167, 69)
+COLOR_DARK   = (30, 30, 30)
+COLOR_GRAY   = (100, 100, 100)
+COLOR_WHITE  = (255, 255, 255)
 
 
 class BeatSafeReport(FPDF):
@@ -27,21 +27,25 @@ class BeatSafeReport(FPDF):
         self.set_fill_color(*COLOR_RED)
         self.rect(0, 0, 210, 18, 'F')
 
-        # BeatSafe title in white
+        # BeatSafe title in white — using hyphen instead of em dash for latin-1 compatibility
         self.set_font("Helvetica", "B", 14)
         self.set_text_color(*COLOR_WHITE)
         self.set_xy(10, 4)
-        self.cell(0, 10, "BEATSAFE — Cardiac Triage Report", ln=False)
+        self.cell(
+            0, 10,
+            "BEATSAFE - Cardiac Triage Report",
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT  # Updated API for fpdf2 v2.5+
+        )
 
-        # Timestamp on the right
+        # Timestamp on the right side of header
         self.set_font("Helvetica", "", 8)
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
         self.set_xy(140, 6)
         self.cell(60, 6, timestamp, align="R")
 
-        # Reset text color for body
+        # Reset text color for body content
         self.set_text_color(*COLOR_DARK)
-        self.ln(16)
+        self.ln(8)
 
     def footer(self):
         """Adds disclaimer footer to every page."""
@@ -51,22 +55,18 @@ class BeatSafeReport(FPDF):
         self.set_text_color(*COLOR_GRAY)
         self.cell(
             0, 10,
-            "BeatSafe supports health workers — it does not replace medical evaluation. "
+            "BeatSafe supports health workers - it does not replace medical evaluation. "
             "When in doubt, always refer the patient for in-person assessment. | SAMU 192",
             align="C"
         )
-        # Page number
-        self.set_xy(170, -15)
-        self.cell(0, 10, f"Page {self.page_no()}", align="R")
 
 
 def get_risk_color(risk_text: str) -> tuple:
     """
-    Returns the appropriate color tuple based on the risk level
-    found in the triage output text.
+    Returns the appropriate color based on risk level in triage output.
 
     Args:
-        risk_text: The full triage output text containing risk level
+        risk_text: Full triage output text
 
     Returns:
         RGB color tuple matching the risk level
@@ -74,7 +74,6 @@ def get_risk_color(risk_text: str) -> tuple:
 
     risk_upper = risk_text.upper()
 
-    # Check for risk keywords in the triage output
     if "ALTO RISCO" in risk_upper or "HIGH RISK" in risk_upper:
         return COLOR_RED
     elif "MODERADO" in risk_upper or "MODERATE" in risk_upper:
@@ -83,38 +82,55 @@ def get_risk_color(risk_text: str) -> tuple:
         return COLOR_GREEN
 
 
-def add_section(pdf: FPDF, title: str, content: str):
+def clean_text(text: str) -> str:
     """
-    Adds a formatted section to the PDF with a dark header bar
-    and clean body text.
+    Cleans AI output text for PDF compatibility.
+    Removes markdown formatting and replaces special characters
+    that are outside the latin-1 range supported by Helvetica.
 
     Args:
-        pdf:     The FPDF instance to write to
-        title:   Section header text (e.g. "SYMPTOM TRIAGE")
-        content: Body text for the section
+        text: Raw AI output text with markdown
+
+    Returns:
+        Clean text safe for PDF rendering
     """
 
-    # Section header — dark background
+    return (
+        text
+        .replace("\u2014", "-")   # Em dash to hyphen
+        .replace("\u2013", "-")   # En dash to hyphen
+        .replace("\u2019", "'")   # Smart quote to apostrophe
+        .replace("\u2018", "'")   # Smart quote to apostrophe
+        .replace("\u201c", '"')   # Smart double quote
+        .replace("\u201d", '"')   # Smart double quote
+        .replace("\u2022", "*")   # Bullet to asterisk
+        .replace("**", "")        # Remove bold markdown
+        .replace("##", "")        # Remove heading markdown
+        .replace("* ", "- ")      # Markdown bullets to dashes
+    )
+
+
+def add_section(pdf: FPDF, title: str, content: str):
+    """
+    Adds a formatted section with dark header bar and clean body text.
+
+    Args:
+        pdf:     FPDF instance
+        title:   Section header text
+        content: Body text content
+    """
+
+    # Dark section header bar
     pdf.set_fill_color(*COLOR_DARK)
     pdf.set_text_color(*COLOR_WHITE)
     pdf.set_font("Helvetica", "B", 9)
-    pdf.cell(0, 7, f"  {title}", ln=True, fill=True)
+    pdf.cell(0, 7, f"  {title}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
 
-    # Section body — clean text
+    # Clean body text
     pdf.set_text_color(*COLOR_DARK)
     pdf.set_font("Helvetica", "", 9)
     pdf.set_left_margin(12)
-
-    # Clean up markdown formatting from AI output
-    clean_content = (
-        content
-        .replace("**", "")   # Remove bold markdown
-        .replace("##", "")   # Remove heading markdown
-        .replace("* ", "• ") # Convert markdown bullets to unicode
-    )
-
-    # Write content as multi-line text
-    pdf.multi_cell(0, 5, clean_content)
+    pdf.multi_cell(0, 5, clean_text(content))
     pdf.set_left_margin(10)
     pdf.ln(4)
 
@@ -136,33 +152,25 @@ def generate_pdf(
     """
     Generates a complete BeatSafe PDF clinical report.
 
-    The report includes:
-        - Patient identification and vital signs
-        - Risk level indicator (color coded)
-        - Symptom triage output from Gemma 3
-        - ECG analysis from Gemini (if available)
-        - Final combined recommendation (if available)
-        - Disclaimer and SAMU 192 reference
-
     Args:
-        patient_name:        Patient name (optional)
-        age:                 Patient age in years
-        sex:                 Biological sex
-        chief_complaint:     Main reason for the visit
-        symptoms:            Associated symptoms
-        vitals:              Vital signs string
-        history:             Medical history and comorbidities
-        medications:         Current medications
-        symptom_triage:      Output from Gemma 3 triage function
-        ecg_analysis:        Output from ECG analysis (optional)
+        patient_name:         Patient name (optional)
+        age:                  Patient age in years
+        sex:                  Biological sex
+        chief_complaint:      Main reason for the visit
+        symptoms:             Associated symptoms
+        vitals:               Vital signs string
+        history:              Medical history and comorbidities
+        medications:          Current medications
+        symptom_triage:       Output from Gemma 3 triage function
+        ecg_analysis:         Output from ECG analysis (optional)
         final_recommendation: Combined recommendation (optional)
-        output_path:         Where to save the PDF file
+        output_path:          Where to save the PDF file
 
     Returns:
         Path to the generated PDF file
     """
 
-    # Initialize the PDF with custom header/footer
+    # Initialize PDF with custom header/footer
     pdf = BeatSafeReport()
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
@@ -171,19 +179,19 @@ def generate_pdf(
     # ── Patient Information Block ──
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(*COLOR_DARK)
-    pdf.cell(0, 8, "PATIENT INFORMATION", ln=True)
+    pdf.cell(0, 8, "PATIENT INFORMATION", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    # Patient details in a clean grid
+    # Light gray background for patient details
+    pdf.set_fill_color(245, 245, 245)
     pdf.set_font("Helvetica", "", 9)
     name_display = patient_name if patient_name else "Not provided"
 
-    pdf.set_fill_color(245, 245, 245)  # Light gray background for info block
-    pdf.cell(0, 6, f"  Name: {name_display}    |    Age: {age} years    |    Sex: {sex}", ln=True, fill=True)
-    pdf.cell(0, 6, f"  Chief Complaint: {chief_complaint}", ln=True, fill=True)
-    pdf.cell(0, 6, f"  Vital Signs: {vitals}", ln=True, fill=True)
-    pdf.cell(0, 6, f"  Associated Symptoms: {symptoms}", ln=True, fill=True)
-    pdf.cell(0, 6, f"  Medical History: {history}", ln=True, fill=True)
-    pdf.cell(0, 6, f"  Current Medications: {medications}", ln=True, fill=True)
+    pdf.cell(0, 6, f"  Name: {name_display}    |    Age: {age} years    |    Sex: {sex}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Chief Complaint: {clean_text(chief_complaint)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Vital Signs: {clean_text(vitals)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Symptoms: {clean_text(symptoms)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Medical History: {clean_text(history)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Medications: {clean_text(medications)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.ln(4)
 
     # ── Risk Level Indicator ──
@@ -195,24 +203,24 @@ def generate_pdf(
     # Determine risk label from triage output
     risk_upper = symptom_triage.upper()
     if "ALTO RISCO" in risk_upper:
-        risk_label = "🔴  HIGH RISK — IMMEDIATE ACTION REQUIRED"
+        risk_label = "HIGH RISK - IMMEDIATE ACTION REQUIRED"
     elif "MODERADO" in risk_upper:
-        risk_label = "🟡  MODERATE RISK — MEDICAL EVALUATION NEEDED"
+        risk_label = "MODERATE RISK - MEDICAL EVALUATION NEEDED"
     else:
-        risk_label = "🟢  LOW RISK — ROUTINE FOLLOW-UP"
+        risk_label = "LOW RISK - ROUTINE FOLLOW-UP"
 
-    pdf.cell(0, 10, f"  {risk_label}", ln=True, fill=True)
+    pdf.cell(0, 10, f"  {risk_label}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.set_text_color(*COLOR_DARK)
     pdf.ln(4)
 
-    # ── Symptom Triage Section — Gemma 3 local ──
-    add_section(pdf, "SYMPTOM TRIAGE — Gemma 3 (Local, Offline)", symptom_triage)
+    # ── Symptom Triage Section ──
+    add_section(pdf, "SYMPTOM TRIAGE - Gemma 3 (Local, Offline)", symptom_triage)
 
     # ── ECG Analysis Section — only if provided ──
     if ecg_analysis and ecg_analysis != "Nenhuma imagem de ECG fornecida.":
-        add_section(pdf, "ECG ANALYSIS — Gemini 2.5 Flash (Cloud)", ecg_analysis)
+        add_section(pdf, "ECG ANALYSIS - Gemini 2.5 Flash (Cloud)", ecg_analysis)
 
-    # ── Final Combined Recommendation — only if provided ──
+    # ── Final Combined Recommendation — only if different from symptom triage ──
     if final_recommendation and final_recommendation != symptom_triage:
         add_section(pdf, "FINAL COMBINED RECOMMENDATION", final_recommendation)
 
@@ -220,7 +228,7 @@ def generate_pdf(
     pdf.set_fill_color(*COLOR_RED)
     pdf.set_text_color(*COLOR_WHITE)
     pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(0, 8, "  IN CASE OF EMERGENCY — CALL SAMU 192 IMMEDIATELY", ln=True, fill=True)
+    pdf.cell(0, 8, "  IN CASE OF EMERGENCY - CALL SAMU 192 IMMEDIATELY", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
     pdf.set_text_color(*COLOR_DARK)
     pdf.ln(2)
 
@@ -230,12 +238,11 @@ def generate_pdf(
     pdf.cell(
         0, 6,
         f"Report generated by BeatSafe on {datetime.now().strftime('%d/%m/%Y at %H:%M:%S')}",
-        ln=True
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT
     )
 
-    # Save the PDF to the specified output path
+    # Save PDF to output path
     pdf.output(output_path)
-
     return output_path
 
 
@@ -244,35 +251,35 @@ def generate_pdf(
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
 
-    print("📋 BeatSafe — PDF Report Generator")
+    print("BeatSafe - PDF Report Generator")
     print("=" * 45)
 
     # Sample triage output for testing
-    sample_triage = """🔴 ALTO RISCO
+    sample_triage = """ALTO RISCO
 
-📋 AVALIAÇÃO:
-O paciente apresenta quadro de dor torácica típica, com características sugestivas de síndrome coronariana aguda. A irradiação para o braço esquerdo, a falta de ar, a sudorese fria e a náusea reforçam essa suspeita.
+AVALIACAO:
+O paciente apresenta quadro de dor toracica tipica, com caracteristicas sugestivas de sindrome coronariana aguda.
 
-⚠️ SINAIS DE ALERTA IDENTIFICADOS:
-• Dor torácica típica com irradiação
-• Falta de ar
-• Sudorese fria
-• Hipertensão grave (165/105 mmHg)
+SINAIS DE ALERTA IDENTIFICADOS:
+- Dor toracica tipica com irradiacao
+- Falta de ar
+- Sudorese fria
+- Hipertensao grave (165/105 mmHg)
 
-✅ CONDUTA RECOMENDADA:
+CONDUTA RECOMENDADA:
 1. Acionar SAMU 192 imediatamente
 2. Manter paciente em repouso semi-sentado
-3. Administrar oxigênio se SatO2 < 94%
+3. Administrar oxigenio se SatO2 menor que 94%
 
-🏥 ENCAMINHAMENTO:
-SAMU 192 — URGÊNCIA MÁXIMA"""
+ENCAMINHAMENTO:
+SAMU 192 - URGENCIA MAXIMA"""
 
-    # Generate test PDF
+    # Generate test report
     output = generate_pdf(
-        patient_name="João Silva",
+        patient_name="Joao Silva",
         age=58,
         sex="Male",
-        chief_complaint="Chest pain for 2 hours, pressure-like, radiating to left arm",
+        chief_complaint="Chest pain for 2 hours, radiating to left arm",
         symptoms="Cold sweating, shortness of breath, nausea",
         vitals="BP 165/105 mmHg, HR 102 bpm, SpO2 91%",
         history="Hypertension 10 years, Type 2 Diabetes, former smoker",
@@ -281,5 +288,5 @@ SAMU 192 — URGÊNCIA MÁXIMA"""
         output_path="test_report.pdf"
     )
 
-    print(f"\n✅ PDF generated successfully: {output}")
+    print(f"\nPDF generated successfully: {output}")
     print("Open test_report.pdf to preview the report.")
