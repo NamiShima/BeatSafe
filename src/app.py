@@ -1,14 +1,14 @@
-import gradio as gr              # Web interface library - creates the browser UI
-import tempfile                  # Handle temporary files for ECG image upload
+import gradio as gr              # Web interface library
 import os                        # File path operations
+import tempfile                  # Temporary file handling for PDF download
 
-# Import core triage and ECG analysis functions
+# Import core BeatSafe modules
 from main import triage
 from ecg import analyze_ecg, combined_analysis
+from pdf_report import generate_pdf
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CUSTOM CSS — Visual styling for the BeatSafe interface
-# Dark medical theme with red accent — clean and professional
+# CUSTOM CSS — Dark medical theme with red accent
 # ─────────────────────────────────────────────────────────────────────────────
 CUSTOM_CSS = """
 * {
@@ -117,20 +117,33 @@ textarea:focus, input:focus {
 """
 
 
-def run_triage_only(patient_name, age, sex, chief_complaint, symptoms, vitals, history, medications):
+def run_full_analysis(
+    patient_name, age, sex,
+    chief_complaint, symptoms, vitals, history, medications,
+    ecg_image
+):
     """
-    Runs symptom-only triage using Gemma 3 local model (offline).
-    Called when no ECG image is provided.
+    Runs the complete BeatSafe pipeline and generates a PDF report.
+
+    Step 1 — Symptom triage via Gemma 3 local (offline)
+    Step 2 — ECG image analysis via Gemini 2.5 Flash (cloud, if image provided)
+    Step 3 — Combined final recommendation (if ECG provided)
+    Step 4 — PDF report generation for download and WhatsApp sharing
 
     Args:
         patient_name, age, sex: Patient identity fields
         chief_complaint, symptoms, vitals, history, medications: Clinical data
+        ecg_image: Uploaded ECG image file path (optional)
 
     Returns:
-        Structured triage assessment from Gemma 3 local
+        Tuple of four values:
+            - symptom_output: Gemma 3 triage result
+            - ecg_output:     ECG analysis result
+            - final_output:   Combined recommendation
+            - pdf_file:       Path to generated PDF for download
     """
 
-    # Assemble patient report from form fields
+    # Assemble patient report string from form fields
     patient_info = f"""
     Paciente: {sex}, {age} anos {"— " + patient_name if patient_name else ""}
     Queixa principal: {chief_complaint}
@@ -140,59 +153,41 @@ def run_triage_only(patient_name, age, sex, chief_complaint, symptoms, vitals, h
     Medicamentos em uso: {medications}
     """
 
-    # Run offline symptom triage with local Gemma 3
-    return triage(patient_info)
-
-
-def run_full_analysis(patient_name, age, sex, chief_complaint, symptoms, vitals, history, medications, ecg_image):
-    """
-    Runs the complete BeatSafe pipeline when an ECG image is provided:
-        Step 1 — Symptom triage via Gemma 3 local (offline)
-        Step 2 — ECG analysis via Gemma 4 API (cloud)
-        Step 3 — Combined final recommendation
-
-    Args:
-        patient_name, age, sex: Patient identity fields
-        chief_complaint, symptoms, vitals, history, medications: Clinical data
-        ecg_image: Uploaded ECG image file path from Gradio
-
-    Returns:
-        Tuple of three strings:
-            - symptom result
-            - ECG analysis result
-            - combined final recommendation
-    """
-
-    # Assemble patient report from form fields
-    patient_info = f"""
-    Paciente: {sex}, {age} anos {"— " + patient_name if patient_name else ""}
-    Queixa principal: {chief_complaint}
-    Sintomas associados: {symptoms}
-    Sinais vitais: {vitals}
-    Histórico médico / Comorbidades: {history}
-    Medicamentos em uso: {medications}
-    """
-
-    # Step 1 — Offline symptom triage with Gemma 3 local
+    # Step 1 — Offline symptom triage using local Gemma 3
     symptom_result = triage(patient_info)
 
-    # Step 2 — ECG image analysis with Gemma 4 cloud (only if image provided)
+    # Step 2 — ECG analysis using Gemini (only if image was uploaded)
     if ecg_image is not None:
         ecg_result = analyze_ecg(ecg_image)
-        # Step 3 — Combine both results into unified recommendation
+        # Step 3 — Combine both results into final recommendation
         final_result = combined_analysis(symptom_result, ecg_result)
     else:
-        # No ECG provided — skip image analysis
+        # No ECG provided — symptom triage is the final result
         ecg_result = "Nenhuma imagem de ECG fornecida."
         final_result = symptom_result
 
-    return symptom_result, ecg_result, final_result
+    # Step 4 — Generate PDF report for download
+    pdf_path = os.path.join(tempfile.gettempdir(), "beatsafe_report.pdf")
+    generate_pdf(
+        patient_name=patient_name,
+        age=int(age),
+        sex=sex,
+        chief_complaint=chief_complaint,
+        symptoms=symptoms,
+        vitals=vitals,
+        history=history,
+        medications=medications,
+        symptom_triage=symptom_result,
+        ecg_analysis=ecg_result if ecg_image else None,
+        final_recommendation=final_result if ecg_image else None,
+        output_path=pdf_path
+    )
+
+    return symptom_result, ecg_result, final_result, pdf_path
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# GRADIO UI — Builds the browser interface with two modes:
-#   Mode 1: Symptom triage only (Gemma 3 local, offline)
-#   Mode 2: Full analysis with ECG image (Gemma 3 + Gemma 4)
+# GRADIO UI — Browser interface with three output panels and PDF download
 # ─────────────────────────────────────────────────────────────────────────────
 with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
@@ -204,10 +199,10 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         </div>
     """)
 
-    # ── Patient form — two columns ──
+    # ── Input form — two columns ──
     with gr.Row():
 
-        # Left column — patient identity and vitals
+        # Left column — patient identity and ECG upload
         with gr.Column(scale=1):
             gr.HTML('<div class="section-title">Patient Identity</div>')
             patient_name = gr.Textbox(
@@ -232,11 +227,11 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 lines=2
             )
 
-            # ECG image upload — triggers full analysis with Gemma 4
+            # ECG upload — triggers Gemini analysis
             gr.HTML('<div class="section-title">ECG Image (optional)</div>')
             ecg_image = gr.Image(
-                label="Upload ECG Image — Gemma 4 will analyze it",
-                type="filepath",    # Returns file path for the analyze_ecg() function
+                label="Upload ECG — Gemini 2.5 Flash will analyze it",
+                type="filepath",
                 sources=["upload"]
             )
 
@@ -270,11 +265,11 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         elem_classes=["triage-btn"]
     )
 
-    # ── Output section — three panels ──
+    # ── Output panels ──
     gr.HTML('<div class="section-title">Clinical Assessment</div>')
 
     with gr.Row():
-        # Panel 1 — Symptom triage result (Gemma 3 local)
+        # Panel 1 — Symptom triage (Gemma 3 local)
         with gr.Column():
             symptom_output = gr.Textbox(
                 label="🫀 Symptom Triage — Gemma 3 (Local)",
@@ -283,24 +278,31 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 elem_classes=["output-box"]
             )
 
-        # Panel 2 — ECG analysis result (Gemma 4 cloud)
+        # Panel 2 — ECG analysis (Gemini cloud)
         with gr.Column():
             ecg_output = gr.Textbox(
-                label="📊 ECG Analysis — Gemma 4 (Cloud)",
+                label="📊 ECG Analysis — Gemini 2.5 Flash (Cloud)",
                 lines=15,
                 interactive=False,
                 elem_classes=["output-box"]
             )
 
-    # Panel 3 — Combined final recommendation (full width)
+    # Panel 3 — Combined recommendation (full width)
     final_output = gr.Textbox(
-        label="🎯 Final Combined Recommendation — Gemma 4",
+        label="🎯 Final Combined Recommendation",
         lines=12,
         interactive=False,
         elem_classes=["output-box"]
     )
 
-    # ── Pre-loaded example cases ──
+    # ── PDF download button — appears after triage runs ──
+    gr.HTML('<div class="section-title">Clinical Report</div>')
+    pdf_download = gr.File(
+        label="📋 Download PDF Report — share via WhatsApp with the doctor",
+        interactive=False
+    )
+
+    # ── Pre-loaded demo cases ──
     gr.Examples(
         label="Quick Demo Cases",
         examples=[
@@ -311,7 +313,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 "BP 165/105 mmHg, HR 102 bpm, SpO2 91%",
                 "Hypertension 10 years, Type 2 Diabetes, former smoker",
                 "Metformin, Losartan",
-                None  # No ECG image for this demo case
+                None
             ],
             [
                 "Maria Oliveira", 52, "Female",
@@ -326,11 +328,11 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         inputs=[patient_name, age, sex, chief_complaint, symptoms, vitals, history, medications, ecg_image]
     )
 
-    # ── Footer disclaimer ──
+    # ── Footer ──
     gr.HTML("""
         <div class="footer-note">
             BeatSafe supports health workers — it does not replace medical evaluation.
-            Symptom triage runs offline via Gemma 3. ECG analysis requires internet via Gemma 4.
+            Symptom triage runs offline via Gemma 3. ECG analysis requires internet via Gemini 2.5 Flash.
             When in doubt, always refer the patient for in-person assessment. · SAMU 192
         </div>
     """)
@@ -338,17 +340,21 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
     # ── Connect button to analysis function ──
     triage_btn.click(
         fn=run_full_analysis,
-        inputs=[patient_name, age, sex, chief_complaint, symptoms, vitals, history, medications, ecg_image],
-        outputs=[symptom_output, ecg_output, final_output]
+        inputs=[
+            patient_name, age, sex,
+            chief_complaint, symptoms, vitals, history, medications,
+            ecg_image
+        ],
+        outputs=[symptom_output, ecg_output, final_output, pdf_download]
     )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LAUNCH — Starts the local web server
-# share=True generates a public link for the Kaggle submission demo
+# share=True generates a public Hugging Face link for the Kaggle demo
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.launch(
-        share=True,      # Generates public Hugging Face link for demo
+        share=True,
         show_error=True
     )
