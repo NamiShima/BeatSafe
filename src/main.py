@@ -1,4 +1,6 @@
-import ollama  # Local inference library - connects to Gemma running on the machine
+import ollama          # Local inference library - connects to Gemma running on the machine
+import os              # File path operations
+from report_pdf import generate_pdf  # BeatSafe PDF report generator
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SYSTEM PROMPT — Defines BeatSafe's clinical behavior
@@ -213,6 +215,96 @@ def triage(patient_info: str) -> str:
     return response["message"]["content"]
 
 
+def triage_and_save_pdf(
+    patient_name: str,
+    age: int,
+    sex: str,
+    chief_complaint: str,
+    symptoms: str,
+    vitals: str,
+    history: str,
+    medications: str,
+    agent_name: str = None,
+    agent_id: str = None,
+    ecg_analysis: str = None,
+    output_dir: str = "reports"
+) -> tuple[str, str]:
+    """
+    Runs the full BeatSafe workflow for one patient:
+      1. Assembles patient data into a structured prompt
+      2. Sends it to Gemma 3 (local, offline) for triage
+      3. Generates a formatted PDF report with all findings
+
+    Args:
+        patient_name:    Patient name (optional for privacy)
+        age:             Patient age in years
+        sex:             Biological sex (auto-translated to Portuguese)
+        chief_complaint: Main reason for the visit
+        symptoms:        Associated symptoms
+        vitals:          Vital signs string (PA, FC, SatO2, etc.)
+        history:         Medical history and comorbidities
+        medications:     Current medications in use
+        agent_name:      Name of the community health agent (optional)
+        agent_id:        Registration number of the agent (optional)
+        ecg_analysis:    Result from ECG image analysis (optional)
+        output_dir:      Folder where the PDF will be saved
+
+    Returns:
+        Tuple of (triage_result, pdf_path)
+    """
+
+    # Step 1 — Build the structured prompt with all patient data
+    patient_info = f"""
+    Paciente: {sex}, {age} anos
+    Nome: {patient_name if patient_name else 'Não informado'}
+    Queixa principal: {chief_complaint}
+    Sintomas associados: {symptoms}
+    Sinais vitais: {vitals}
+    Histórico médico: {history}
+    Medicamentos em uso: {medications}
+    """
+
+    # Add ECG analysis to prompt if available — enriches the triage context
+    if ecg_analysis:
+        patient_info += f"\n    Análise de ECG: {ecg_analysis}"
+
+    print(f"\n🫀 Iniciando triagem para: {patient_name or 'Paciente'}...")
+
+    # Step 2 — Run offline triage via Gemma 3 (Ollama)
+    triage_result = triage(patient_info)
+    print("✅ Triagem concluída.")
+
+    # Step 3 — Create output folder if it doesn't exist yet
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build a safe filename using patient name (or fallback) + timestamp
+    from datetime import datetime
+    safe_name = (patient_name or "paciente").replace(" ", "_").lower()
+    timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pdf_path   = os.path.join(output_dir, f"beatsafe_{safe_name}_{timestamp}.pdf")
+
+    # Step 4 — Generate the PDF report with all collected data
+    print("📄 Gerando relatório PDF...")
+    generate_pdf(
+        patient_name=patient_name,
+        age=age,
+        sex=sex,
+        chief_complaint=chief_complaint,
+        symptoms=symptoms,
+        vitals=vitals,
+        history=history,
+        medications=medications,
+        symptom_triage=triage_result,
+        agent_name=agent_name,
+        agent_id=agent_id,
+        ecg_analysis=ecg_analysis,
+        output_path=pdf_path
+    )
+
+    print(f"✅ Relatório salvo em: {pdf_path}")
+    return triage_result, pdf_path
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TEST BLOCK — Runs only when this file is executed directly (not imported)
 # Two clinical cases cover the two main BeatSafe use scenarios:
@@ -226,34 +318,42 @@ if __name__ == "__main__":
     print("Clinical source: CAB-14 (Ministry of Health) + SAMU 192 DF Protocol")
     print("=" * 60)
 
-    # Case 1: Acute chest pain with multiple high-risk factors (Protocol C01)
-    caso_1 = """
-    Paciente: Homem, 58 anos
-    Queixa principal: Dor no peito há 2 horas, tipo aperto, com irradiação para braço esquerdo
-    Sintomas associados: Falta de ar, sudorese fria, náusea
-    Histórico médico: Hipertensão há 10 anos, diabetes tipo 2, ex-tabagista (parou há 5 anos)
-    Sinais vitais: PA 165/105 mmHg, FC 102 bpm, SatO2 91%
-    Medicamentos em uso: Metformina, Losartana
-    Observação: Nunca teve angina ou IAM antes
-    """
+    # ── Case 1: Acute chest pain — high risk emergency (Protocol C01) ──
+    resultado_1, pdf_1 = triage_and_save_pdf(
+        patient_name    = "Joao Silva",
+        age             = 58,
+        sex             = "Male",
+        chief_complaint = "Dor no peito ha 2 horas, tipo aperto, com irradiacao para braco esquerdo",
+        symptoms        = "Falta de ar, sudorese fria, nausea",
+        vitals          = "PA 165/105 mmHg, FC 102 bpm, SatO2 91%",
+        history         = "Hipertensao ha 10 anos, diabetes tipo 2, ex-tabagista (parou ha 5 anos)",
+        medications     = "Metformina, Losartana",
+        agent_name      = "Maria Souza",       # Community health agent
+        agent_id        = "ACS-2024-0381",     # Agent registration number
+    )
 
-    print("\n📋 CASE 1 — Acute Chest Pain (Emergency Triage)")
+    print("\n📋 CASO 1 — Resultado da Triagem:")
     print("-" * 45)
-    print(triage(caso_1))
+    print(resultado_1)
+    print(f"\n📄 PDF: {pdf_1}")
 
     print("\n" + "=" * 60)
 
-    # Case 2: Routine visit with no acute symptoms — preventive risk screening
-    caso_2 = """
-    Paciente: Mulher, 52 anos
-    Queixa principal: Consulta de rotina, sem dor no momento
-    Histórico médico: Hipertensão controlada, sobrepeso (IMC 28), sedentária
-    Sinais vitais: PA 138/88 mmHg, FC 78 bpm
-    Exames recentes: Colesterol total 210 mg/dL, LDL 145 mg/dL, Glicemia 98 mg/dL
-    Hábitos: Não fuma, bebe socialmente, não pratica exercícios
-    Histórico familiar: Pai faleceu de IAM aos 62 anos
-    """
+    # ── Case 2: Routine visit — preventive risk screening (Framingham) ──
+    resultado_2, pdf_2 = triage_and_save_pdf(
+        patient_name    = "Ana Lima",
+        age             = 52,
+        sex             = "Female",
+        chief_complaint = "Consulta de rotina, sem dor no momento",
+        symptoms        = "Nenhum sintoma agudo",
+        vitals          = "PA 138/88 mmHg, FC 78 bpm",
+        history         = "Hipertensao controlada, sobrepeso (IMC 28), sedentaria, pai faleceu de IAM aos 62 anos",
+        medications     = "Nenhum",
+        agent_name      = "Maria Souza",
+        agent_id        = "ACS-2024-0381",
+    )
 
-    print("\n📋 CASE 2 — Preventive Cardiovascular Risk Screening")
+    print("\n📋 CASO 2 — Resultado da Triagem:")
     print("-" * 45)
-    print(triage(caso_2))
+    print(resultado_2)
+    print(f"\n📄 PDF: {pdf_2}")
