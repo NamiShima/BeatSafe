@@ -179,6 +179,7 @@ def generate_pdf(
     # ── Patient Information Block ──
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(*COLOR_DARK)
+    pdf.ln(4)
     pdf.cell(0, 8, "PATIENT INFORMATION", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     # Light gray background for patient details
