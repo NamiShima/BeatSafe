@@ -1,0 +1,17 @@
+# Core AI — local inference via Ollama
+ollama
+
+# Google AI API — ECG analysis with Gemma 4
+google-genai
+
+# Web interface
+gradio
+
+# PDF report generation
+fpdf2
+
+# Image processing for ECG upload
+pillow
+
+# Environment variables (API key protection)
+python-dotenv
