@@ -1,6 +1,6 @@
 import ollama          # Local inference library - connects to Gemma running on the machine
 import os              # File path operations
-from report_pdf import generate_pdf  # BeatSafe PDF report generator
+from pdf_report import generate_pdf  # BeatSafe PDF report generator
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SYSTEM PROMPT — Defines BeatSafe's clinical behavior
