@@ -336,27 +336,26 @@ def generate_pdf(
     pdf.add_page()
     pdf.set_margins(10, 10, 10)
 
-    # ── Attendance Code + Patient Info — mesma linha para economizar espaço ──
-    pdf.set_font("DejaVu", "B", 9)
-    pdf.set_text_color(*COLOR_DARK)
-    pdf.cell(0, 6, "INFORMAÇÕES DO PACIENTE", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # ── Patient Info — header bar escuro igual aos outros blocos ──
+    pdf.set_fill_color(*COLOR_DARK)
+    pdf.set_text_color(*COLOR_WHITE)
+    pdf.set_font("DejaVu", "B", 8)
 
-    # Código de atendimento na linha do paciente (direita)
-    pdf.set_font("DejaVu", "", 7)
-    pdf.set_text_color(*COLOR_GRAY)
-    pdf.cell(0, 4, f"Cód: BS-{attendance_code}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
-    pdf.set_text_color(*COLOR_DARK)
+    # Título e código de atendimento na mesma barra
+    pdf.cell(120, 6, "  INFORMAÇÕES DO PACIENTE", new_x=XPos.RIGHT, new_y=YPos.TOP, fill=True)
+    pdf.cell(0,   6, f"Cód: BS-{attendance_code}  ", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True, align="R")
 
-    # Dados do paciente em fonte pequena e linhas compactas
+    # Dados do paciente — fundo cinza claro, linhas com altura maior para respirar
     pdf.set_fill_color(*COLOR_LIGHT)
+    pdf.set_text_color(*COLOR_DARK)
     pdf.set_font("DejaVu", "", 8)
     name_display = patient_name if patient_name else "Não informado"
 
-    pdf.cell(0, 5, f"  Nome: {name_display}  |  Idade: {age} anos  |  Sexo: {sex_pt}  |  Vitais: {vitals}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 5, f"  Queixa: {chief_complaint}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 5, f"  Sintomas: {symptoms}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.cell(0, 5, f"  Histórico: {history}  |  Medicamentos: {medications}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-    pdf.ln(2)
+    pdf.cell(0, 6, f"  Nome: {name_display}  |  Idade: {age} anos  |  Sexo: {sex_pt}  |  Vitais: {vitals}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Queixa: {chief_complaint}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Sintomas: {symptoms}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.cell(0, 6, f"  Histórico: {history}  |  Medicamentos: {medications}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+    pdf.ln(3)
 
     # ── Risk Level Indicator — banner compacto ──
     risk_color = get_risk_color(symptom_triage)
