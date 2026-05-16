@@ -220,6 +220,63 @@ def load_history(risk_filter: str) -> list:
     return get_history(risk_filter=risk_filter)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CHATBOT — Gemma 3 offline answering clinical questions from health agents
+# Focused on SUS protocols, CAB-14, SAMU 192 and primary care procedures
+# ─────────────────────────────────────────────────────────────────────────────
+CHATBOT_SYSTEM_PROMPT = """
+Você é o BeatSafe Assistente, um apoio clínico offline para agentes comunitários
+de saúde e profissionais de Unidades Básicas de Saúde (UBS) brasileiras.
+
+Responda dúvidas sobre:
+  - Protocolos cardíacos do SUS (Caderno de Atenção Básica nº 14)
+  - Sinais e sintomas cardiovasculares
+  - Quando acionar o SAMU 192
+  - Medicamentos do protocolo SUS (hipertensão, diabetes, colesterol)
+  - Procedimentos de suporte básico de vida (SBV)
+  - Escore de Framingham e fatores de risco
+  - Orientações para pacientes e familiares
+
+Regras:
+  - Linguagem simples e acessível para agentes de saúde não médicos
+  - Respostas objetivas e práticas — o agente está no campo
+  - Sempre reforce: em emergências, acionar SAMU 192 imediatamente
+  - Nunca substitua avaliação médica presencial
+  - Se a dúvida estiver fora do escopo cardíaco/SUS, redirecione gentilmente
+"""
+
+
+def chat_with_beatsafe(message: str, chat_history: list) -> tuple:
+    """
+    Sends a question to Gemma 3 (local, offline) and returns the answer.
+    Maintains full conversation history for context-aware follow-up questions.
+
+    Args:
+        message:      Current question from the health agent
+        chat_history: List of previous [user, assistant] message pairs
+
+    Returns:
+        Tuple of (empty string to clear input, updated chat history)
+    """
+
+    import ollama
+
+    # Build messages list with full conversation history for context
+    messages = [{"role": "system", "content": CHATBOT_SYSTEM_PROMPT}]
+    for user_msg, assistant_msg in chat_history:
+        messages.append({"role": "user",      "content": user_msg})
+        messages.append({"role": "assistant", "content": assistant_msg})
+    messages.append({"role": "user", "content": message})
+
+    # Send to local Gemma 3 — no internet required
+    response = ollama.chat(model="gemma3:12b", messages=messages)
+    answer = response["message"]["content"]
+
+    # Append new exchange to history and clear input
+    chat_history.append((message, answer))
+    return "", chat_history
+
+
 def load_stats() -> str:
     """Returns an HTML summary of triage statistics."""
     s = get_stats()
@@ -458,9 +515,83 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
             """)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LAUNCH
-# ─────────────────────────────────────────────────────────────────────────────
+        # ══════════════════════════════════════════════════════════
+        # TAB 3 — ASSISTENTE DE DÚVIDAS
+        # ══════════════════════════════════════════════════════════
+        with gr.Tab("💬 Assistente"):
+
+            gr.HTML('<div class="section-title">Assistente Clínico — Gemma 3 (Offline)</div>')
+            gr.HTML("""
+                <div style="color:#888; font-size:0.78rem; letter-spacing:1px; margin-bottom:12px;">
+                    Tire dúvidas clínicas sobre protocolos do SUS, sinais de alerta, medicamentos
+                    e procedimentos. Funciona 100% offline via Gemma 3.
+                </div>
+            """)
+
+            # ── Chat window ──
+            chatbot = gr.Chatbot(
+                label="",
+                height=420,
+                show_label=False,
+                placeholder="💬 Faça sua pergunta clínica...",
+                bubble_full_width=False,
+            )
+
+            # ── Input row ──
+            with gr.Row():
+                chat_input = gr.Textbox(
+                    placeholder="Ex: Quando devo acionar o SAMU? O que é fibrilação atrial?",
+                    lines=1,
+                    scale=5,
+                    show_label=False,
+                    container=False
+                )
+                chat_btn = gr.Button("Enviar", scale=1, variant="primary")
+
+            # ── Quick question suggestions ──
+            gr.HTML('<div class="section-title" style="margin-top:16px;">Perguntas Frequentes</div>')
+            with gr.Row():
+                q1 = gr.Button("🚨 Quando acionar o SAMU?",        scale=1)
+                q2 = gr.Button("💊 Medicamentos para hipertensão",  scale=1)
+                q3 = gr.Button("❤️ Como fazer RCP corretamente?",   scale=1)
+            with gr.Row():
+                q4 = gr.Button("📊 O que é o Escore de Framingham?", scale=1)
+                q5 = gr.Button("🩺 Sinais de infarto no ECG",         scale=1)
+                q6 = gr.Button("🧂 Meta de pressão arterial no SUS",  scale=1)
+
+            gr.HTML("""
+                <div class="footer-note">
+                    O Assistente BeatSafe opera offline via Gemma 3 — nenhuma pergunta sai do dispositivo.
+                    Não substitui avaliação médica presencial. · SAMU 192
+                </div>
+            """)
+
+            # ── Wire up send button and Enter key ──
+            chat_btn.click(
+                fn=chat_with_beatsafe,
+                inputs=[chat_input, chatbot],
+                outputs=[chat_input, chatbot]
+            )
+            chat_input.submit(
+                fn=chat_with_beatsafe,
+                inputs=[chat_input, chatbot],
+                outputs=[chat_input, chatbot]
+            )
+
+            # ── Wire up quick question buttons ──
+            for btn, question in [
+                (q1, "Quando devo acionar o SAMU 192? Quais são os critérios?"),
+                (q2, "Quais medicamentos são usados para hipertensão no protocolo SUS?"),
+                (q3, "Como fazer RCP (reanimação cardiopulmonar) corretamente?"),
+                (q4, "O que é o Escore de Framingham e como ele é calculado?"),
+                (q5, "Quais são os sinais de infarto no ECG que devo reconhecer?"),
+                (q6, "Qual é a meta de pressão arterial recomendada pelo SUS?"),
+            ]:
+                btn.click(
+                    fn=chat_with_beatsafe,
+                    inputs=[gr.Textbox(value=question, visible=False), chatbot],
+                    outputs=[chat_input, chatbot]
+                )
 if __name__ == "__main__":
     app.launch(
         share=True,
