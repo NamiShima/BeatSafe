@@ -534,7 +534,6 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 height=420,
                 show_label=False,
                 placeholder="💬 Faça sua pergunta clínica...",
-                bubble_full_width=False,
             )
 
             # ── Input row ──
