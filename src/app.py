@@ -428,13 +428,14 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 )
                 refresh_btn = gr.Button("🔄 Atualizar", scale=1)
 
-            # ── History table ──
+            # ── History table — colunas ajustadas para evitar scroll horizontal ──
             history_table = gr.Dataframe(
                 headers=["Data/Hora", "Paciente", "Idade", "Risco", "Queixa Principal", "Sinais Vitais"],
                 datatype=["str", "str", "number", "str", "str", "str"],
                 value=load_history("Todos"),
                 interactive=False,
-                wrap=True
+                wrap=True,
+                column_widths=["130px", "120px", "60px", "110px", "280px", "200px"]
             )
 
             # ── Wire up filter and refresh ──
