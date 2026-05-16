@@ -80,7 +80,7 @@ def save_triage(
     else:
         risk_level = "🟢 Baixo Risco"
 
-    data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
+    data_hora = datetime.now().strftime("%d/%m/%Y %H:%M"  )  # ex: 16/05/2026 14:09
 
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute("""
