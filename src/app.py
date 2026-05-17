@@ -551,18 +551,18 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 outputs=[chat_input, chatbot]
             )
 
-            # ── Wire up quick question buttons — preenche o input e envia ──
-            def make_quick_question(q):
+            # ── Wire up quick question buttons ──
+            def set_and_send(q):
                 def fn(history):
-                    return chat_with_beatsafe(q, history)
+                    yield from chat_with_beatsafe(q, history)
                 return fn
 
-            q1.click(fn=make_quick_question("Quando devo acionar o SAMU 192? Quais são os critérios?"),         inputs=[chatbot], outputs=[chat_input, chatbot])
-            q2.click(fn=make_quick_question("Quais medicamentos são usados para hipertensão no protocolo SUS?"), inputs=[chatbot], outputs=[chat_input, chatbot])
-            q3.click(fn=make_quick_question("Como fazer RCP (reanimação cardiopulmonar) corretamente?"),         inputs=[chatbot], outputs=[chat_input, chatbot])
-            q4.click(fn=make_quick_question("O que é o Escore de Framingham e como ele é calculado?"),           inputs=[chatbot], outputs=[chat_input, chatbot])
-            q5.click(fn=make_quick_question("Quais são os sinais de infarto no ECG que devo reconhecer?"),       inputs=[chatbot], outputs=[chat_input, chatbot])
-            q6.click(fn=make_quick_question("Qual é a meta de pressão arterial recomendada pelo SUS?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
+            q1.click(fn=set_and_send("Quando devo acionar o SAMU 192? Quais são os critérios?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
+            q2.click(fn=set_and_send("Quais medicamentos são usados para hipertensão no protocolo SUS?"),  inputs=[chatbot], outputs=[chat_input, chatbot])
+            q3.click(fn=set_and_send("Como fazer RCP (reanimação cardiopulmonar) corretamente?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
+            q4.click(fn=set_and_send("O que é o Escore de Framingham e como ele é calculado?"),            inputs=[chatbot], outputs=[chat_input, chatbot])
+            q5.click(fn=set_and_send("Quais são os sinais de infarto no ECG que devo reconhecer?"),        inputs=[chatbot], outputs=[chat_input, chatbot])
+            q6.click(fn=set_and_send("Qual é a meta de pressão arterial recomendada pelo SUS?"),           inputs=[chatbot], outputs=[chat_input, chatbot])
         # ══════════════════════════════════════════════════════════
         # TAB 4 — UNIDADES DE SAÚDE PRÓXIMAS
         # ══════════════════════════════════════════════════════════
