@@ -304,6 +304,9 @@ def suggest_medications(clinical_info: str):
     for chunk in stream:
         accumulated += chunk["message"]["content"]
         yield accumulated
+
+
+def load_stats() -> str:
     """Returns an HTML summary of triage statistics."""
     s = get_stats()
     return f"""
