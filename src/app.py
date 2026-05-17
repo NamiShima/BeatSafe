@@ -602,101 +602,72 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 </div>
             """)
 
-            # ── Busca via botões que abrem links diretos — sem iframe ──
+            # ── Busca via links diretos Google Maps — sem JavaScript ──
             gr.HTML("""
-                <div style="background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:16px;">
+                <div style="background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:20px;">
 
-                    <div style="color:#aaa; font-size:0.78rem; margin-bottom:16px;">
-                        Clique no botão desejado — seu navegador vai pedir permissão de localização
-                        e abrir o mapa com as unidades mais próximas de você.
+                    <div style="color:#aaa; font-size:0.78rem; margin-bottom:20px; letter-spacing:1px;">
+                        Clique no botão desejado para abrir o Google Maps com as unidades mais próximas de você.
+                        O navegador vai pedir permissão de localização automaticamente.
                     </div>
 
-                    <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; flex-direction:column; gap:12px;">
 
-                        <a onclick="openNearby('hospital')" href="#"
-                           style="display:block; background:#e63946; color:white; border:none;
-                                  border-radius:4px; padding:12px 16px; cursor:pointer;
-                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
-                                  text-decoration:none; text-align:center;">
+                        <a href="https://www.google.com/maps/search/hospital+próximo" target="_blank"
+                           style="display:block; background:#e63946; color:white; border-radius:4px;
+                                  padding:14px 16px; font-family:monospace; font-size:0.85rem;
+                                  letter-spacing:2px; text-decoration:none; text-align:center;">
                             🏥 HOSPITAIS PRÓXIMOS
                         </a>
 
-                        <a onclick="openNearby('clinic')" href="#"
+                        <a href="https://www.google.com/maps/search/UBS+posto+de+saúde+próximo" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
-                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
-                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
-                                  letter-spacing:2px; text-decoration:none; text-align:center;">
+                                  border:1px solid #e63946; border-radius:4px; padding:14px 16px;
+                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
+                                  text-decoration:none; text-align:center;">
                             🩺 UBS / POSTOS DE SAÚDE
                         </a>
 
-                        <a onclick="openNearby('pharmacy')" href="#"
+                        <a href="https://www.google.com/maps/search/farmácia+próxima" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
-                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
-                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
-                                  letter-spacing:2px; text-decoration:none; text-align:center;">
+                                  border:1px solid #e63946; border-radius:4px; padding:14px 16px;
+                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
+                                  text-decoration:none; text-align:center;">
                             💊 FARMÁCIAS
                         </a>
 
-                        <a onclick="openNearby('emergency')" href="#"
+                        <a href="https://www.google.com/maps/search/UPA+pronto+socorro+próximo" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
-                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
-                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
-                                  letter-spacing:2px; text-decoration:none; text-align:center;">
+                                  border:1px solid #e63946; border-radius:4px; padding:14px 16px;
+                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
+                                  text-decoration:none; text-align:center;">
                             🚑 UPA / PRONTO-SOCORRO
+                        </a>
+
+                        <a href="https://www.google.com/maps/search/SAMU+192" target="_blank"
+                           style="display:block; background:#1a1a1a; color:#e0e0e0;
+                                  border:1px solid #e63946; border-radius:4px; padding:14px 16px;
+                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
+                                  text-decoration:none; text-align:center;">
+                            🚨 SAMU 192
                         </a>
 
                     </div>
 
-                    <div id="map-status" style="color:#888; font-size:0.75rem;
-                         letter-spacing:1px; margin-top:12px; text-align:center;">
-                        Aguardando seleção...
+                    <div style="margin-top:20px; padding:12px; background:#111;
+                                border-radius:4px; border-left:3px solid #e63946;">
+                        <div style="color:#e63946; font-size:0.75rem; letter-spacing:2px; font-weight:700;">
+                            EM CASO DE EMERGÊNCIA
+                        </div>
+                        <div style="color:#e0e0e0; font-size:0.85rem; margin-top:4px;">
+                            Ligue <strong>SAMU 192</strong> imediatamente — não espere pelo mapa.
+                        </div>
                     </div>
 
                 </div>
 
-                <script>
-                function openNearby(type) {
-                    var status = document.getElementById('map-status');
-                    status.style.color = '#888';
-                    status.innerText = 'Obtendo sua localização...';
-
-                    if (!navigator.geolocation) {
-                        status.style.color = '#e63946';
-                        status.innerText = 'Geolocalização não suportada. Use a busca manual no Google Maps.';
-                        return;
-                    }
-
-                    navigator.geolocation.getCurrentPosition(function(pos) {
-                        var lat = pos.coords.latitude;
-                        var lon = pos.coords.longitude;
-
-                        var queries = {
-                            'hospital':  'hospital',
-                            'clinic':    'UBS+posto+de+saude',
-                            'pharmacy':  'farmácia',
-                            'emergency': 'UPA+pronto+socorro'
-                        };
-
-                        var q = queries[type] || 'hospital';
-                        var url = 'https://www.google.com/maps/search/' + q
-                                + '/@' + lat + ',' + lon + ',14z';
-
-                        status.style.color = '#28a745';
-                        status.innerText = 'Abrindo mapa com sua localização...';
-                        window.open(url, '_blank');
-
-                    }, function(err) {
-                        status.style.color = '#e63946';
-                        status.innerText = 'Permissão negada. Ative a localização no navegador e tente novamente.';
-                    });
-
-                    return false;
-                }
-                </script>
-
                 <div class="footer-note" style="margin-top:16px;">
                     Abre o Google Maps com sua localização atual · Nenhum dado é enviado ao BeatSafe.
-                    Em emergência, ligue SAMU 192 imediatamente — não espere pelo mapa.
                 </div>
             """)
 
