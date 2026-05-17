@@ -496,73 +496,29 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML('<div class="section-title">Assistente Clínico — Gemma 3 (Offline)</div>')
             gr.HTML("""
-                <div style="color:#888; font-size:0.78rem; letter-spacing:1px; margin-bottom:12px;">
-                    Tire dúvidas clínicas sobre protocolos do SUS, sinais de alerta, medicamentos
-                    e procedimentos. Funciona 100% offline via Gemma 3.
+                <div style="color:#888; font-size:0.78rem; margin-bottom:12px;">
+                    Tire dúvidas sobre protocolos do SUS, sinais de alerta e medicamentos.
+                    Funciona 100% offline via Gemma 3.
                 </div>
             """)
 
-            # ── Chat window ──
-            chatbot = gr.Chatbot(
-                label="",
-                height=420,
-                show_label=False,
-                placeholder="💬 Faça sua pergunta clínica...",
-            )
+            chatbot = gr.Chatbot(label="", height=420, show_label=False)
 
-            # ── Input row ──
             with gr.Row():
                 chat_input = gr.Textbox(
                     placeholder="Ex: Quando devo acionar o SAMU? O que é fibrilação atrial?",
-                    lines=1,
-                    scale=5,
-                    show_label=False,
-                    container=False
+                    lines=1, scale=5, show_label=False, container=False
                 )
                 chat_btn = gr.Button("Enviar", scale=1, variant="primary")
 
-            # ── Quick question suggestions ──
-            gr.HTML('<div class="section-title" style="margin-top:16px;">Perguntas Frequentes</div>')
-            with gr.Row():
-                q1 = gr.Button("🚨 Quando acionar o SAMU?",        scale=1)
-                q2 = gr.Button("💊 Medicamentos para hipertensão",  scale=1)
-                q3 = gr.Button("❤️ Como fazer RCP corretamente?",   scale=1)
-            with gr.Row():
-                q4 = gr.Button("📊 O que é o Escore de Framingham?", scale=1)
-                q5 = gr.Button("🩺 Sinais de infarto no ECG",         scale=1)
-                q6 = gr.Button("🧂 Meta de pressão arterial no SUS",  scale=1)
-
             gr.HTML("""
                 <div class="footer-note">
-                    O Assistente BeatSafe opera offline via Gemma 3 — nenhuma pergunta sai do dispositivo.
-                    Não substitui avaliação médica presencial. · SAMU 192
+                    Opera offline via Gemma 3 · Não substitui avaliação médica · SAMU 192
                 </div>
             """)
 
-            # ── Wire up send button and Enter key ──
-            chat_btn.click(
-                fn=chat_with_beatsafe,
-                inputs=[chat_input, chatbot],
-                outputs=[chat_input, chatbot]
-            )
-            chat_input.submit(
-                fn=chat_with_beatsafe,
-                inputs=[chat_input, chatbot],
-                outputs=[chat_input, chatbot]
-            )
-
-            # ── Wire up quick question buttons ──
-            def set_and_send(q):
-                def fn(history):
-                    yield from chat_with_beatsafe(q, history)
-                return fn
-
-            q1.click(fn=set_and_send("Quando devo acionar o SAMU 192? Quais são os critérios?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
-            q2.click(fn=set_and_send("Quais medicamentos são usados para hipertensão no protocolo SUS?"),  inputs=[chatbot], outputs=[chat_input, chatbot])
-            q3.click(fn=set_and_send("Como fazer RCP (reanimação cardiopulmonar) corretamente?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
-            q4.click(fn=set_and_send("O que é o Escore de Framingham e como ele é calculado?"),            inputs=[chatbot], outputs=[chat_input, chatbot])
-            q5.click(fn=set_and_send("Quais são os sinais de infarto no ECG que devo reconhecer?"),        inputs=[chatbot], outputs=[chat_input, chatbot])
-            q6.click(fn=set_and_send("Qual é a meta de pressão arterial recomendada pelo SUS?"),           inputs=[chatbot], outputs=[chat_input, chatbot])
+            chat_btn.click(fn=chat_with_beatsafe, inputs=[chat_input, chatbot], outputs=[chat_input, chatbot])
+            chat_input.submit(fn=chat_with_beatsafe, inputs=[chat_input, chatbot], outputs=[chat_input, chatbot])
         # ══════════════════════════════════════════════════════════
         # TAB 4 — UNIDADES DE SAÚDE PRÓXIMAS
         # ══════════════════════════════════════════════════════════
