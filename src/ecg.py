@@ -3,6 +3,7 @@
 # Designed for Gemma 4 migration when available on Ollama
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
+
 import os                        # Access environment variables (API key)
 from google import genai         # Google AI API library (google-genai)
 from google.genai import types   # Content types for multimodal requests
@@ -20,11 +21,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Initialize the Google AI client with the API key
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Gemma 4 model — the competition model, supports multimodal input
-GEMMA_MODEL = "models/gemini-2.5-flash"
+# ─────────────────────────────────────────────────────────────────────────────
+# MODEL SELECTION — Gemini 2.5 Flash handles ECG image analysis (cloud, optional)
+# This is the multimodal component of BeatSafe's hybrid architecture:
+#   - Core triage: Gemma 3:4b via Ollama (100% offline, no internet required)
+#   - ECG analysis: Gemini 2.5 Flash via API (cloud, only when internet available)
+# ECG analysis is optional — BeatSafe degrades gracefully without it.
+# Future goal: migrate to Gemma 4 multimodal via Ollama when available locally.
+# ─────────────────────────────────────────────────────────────────────────────
+GEMINI_MODEL = "models/gemini-2.5-flash"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ECG ANALYSIS PROMPT — Instructs Gemma 4 on how to read the ECG image
+# ECG ANALYSIS PROMPT — Instructs the model on how to read the ECG image
 # Written in Portuguese to match the clinical context of Brazilian health workers
 # ─────────────────────────────────────────────────────────────────────────────
 ECG_PROMPT = """
@@ -79,7 +87,10 @@ Seja claro, direto e use linguagem acessivel para agentes de saude nao especiali
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ECG COMBINATION PROMPT — Merges ECG findings with symptom triage
-# This is the core innovation: two analyses combined into one recommendation
+# This is the core of BeatSafe's hybrid architecture:
+#   Gemma 3 (offline) handles symptom reasoning
+#   Gemini Flash (cloud) handles image analysis
+#   Together they produce a more complete clinical picture
 # ─────────────────────────────────────────────────────────────────────────────
 ECG_COMBINATION_PROMPT = """
 Você é um cardiologista de plantão em uma Unidade Básica de Saúde brasileira.
@@ -115,11 +126,12 @@ Seja objetivo e use linguagem simples para agentes de saúde.
 
 def analyze_ecg(image_path: str) -> str:
     """
-    Sends an ECG image to Gemma 4 for multimodal analysis.
+    Sends an ECG image to Gemini 2.5 Flash for multimodal analysis.
     Returns a structured clinical interpretation in Portuguese.
 
-    Uses Gemma 4 (gemma-4-31b-it) via Google AI API —
-    the same model family as the hackathon theme.
+    This is the optional cloud component of BeatSafe — only runs when
+    the health agent has internet access and uploads an ECG image.
+    Core triage (main.py) always runs offline via Gemma 3.
 
     Args:
         image_path: File path to the ECG image (JPG or PNG)
@@ -135,15 +147,15 @@ def analyze_ecg(image_path: str) -> str:
     image.save(buffer, format="JPEG")
     image_bytes = buffer.getvalue()
 
-    # Build the multimodal request — image + clinical prompt sent to Gemma 4
+    # Build the multimodal request — image + clinical prompt
     response = client.models.generate_content(
-        model=GEMMA_MODEL,
+        model=GEMINI_MODEL,
         contents=[
             types.Part.from_bytes(
                 data=image_bytes,
                 mime_type="image/jpeg"
             ),
-            ECG_PROMPT  # Clinical instructions for ECG interpretation
+            ECG_PROMPT
         ]
     )
 
@@ -152,13 +164,13 @@ def analyze_ecg(image_path: str) -> str:
 
 def combined_analysis(symptom_triage: str, ecg_analysis: str) -> str:
     """
-    Combines symptom triage output (from Gemma local) with ECG analysis
-    (from Gemma 4 cloud) into a single unified clinical recommendation.
+    Combines symptom triage output (from Gemma 3 local) with ECG analysis
+    (from Gemini Flash cloud) into a single unified clinical recommendation.
 
-    This is the core innovation of BeatSafe:
-    Gemma 3 handles text reasoning offline (local),
-    Gemma 4 handles image analysis via API (cloud),
-    together they produce a more accurate triage.
+    BeatSafe's hybrid design:
+      - Gemma 3 via Ollama: offline symptom triage (always available)
+      - Gemini 2.5 Flash via API: ECG image analysis (when internet available)
+      - This function: merges both into one final recommendation
 
     Args:
         symptom_triage: Output from the triage() function in main.py
@@ -168,15 +180,14 @@ def combined_analysis(symptom_triage: str, ecg_analysis: str) -> str:
         Unified clinical recommendation combining both data sources
     """
 
-    # Fill in the combination prompt with both reports
     prompt = ECG_COMBINATION_PROMPT.format(
         symptom_triage=symptom_triage,
         ecg_analysis=ecg_analysis
     )
 
-    # Send to Gemma 4 for final unified analysis (text only, no image)
+    # Text-only request to Gemini Flash — no image needed at this stage
     response = client.models.generate_content(
-        model=GEMMA_MODEL,
+        model=GEMINI_MODEL,
         contents=prompt
     )
 
@@ -186,9 +197,9 @@ def combined_analysis(symptom_triage: str, ecg_analysis: str) -> str:
 def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
     """
     Runs the complete BeatSafe pipeline for a patient with an ECG image:
-        Step 1 — Symptom triage via Gemma 3 local (offline)
-        Step 2 — ECG image analysis via Gemma 4 API (cloud)
-        Step 3 — Combined final recommendation via Gemma 4
+        Step 1 — Symptom triage via Gemma 3 local (offline, always runs)
+        Step 2 — ECG image analysis via Gemini 2.5 Flash (cloud, optional)
+        Step 3 — Combined final recommendation via Gemini 2.5 Flash
 
     Args:
         patient_info: Patient symptoms, vitals and history (text)
@@ -196,8 +207,8 @@ def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
 
     Returns:
         Dictionary with three keys:
-            - symptom_triage: result from Gemma 3 local
-            - ecg_analysis:   result from Gemma 4 multimodal
+            - symptom_triage: result from Gemma 3 (offline)
+            - ecg_analysis:   result from Gemini Flash (multimodal)
             - final:          unified combined recommendation
     """
 
@@ -208,8 +219,8 @@ def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
     print("Step 1/3 — Running symptom triage with Gemma 3 (local, offline)...")
     symptom_result = triage(patient_info)
 
-    # Step 2 — Cloud ECG analysis using Gemma 4 multimodal model
-    print("Step 2/3 — Analyzing ECG image with Gemma 4 (cloud)...")
+    # Step 2 — Cloud ECG analysis using Gemini 2.5 Flash multimodal
+    print("Step 2/3 — Analyzing ECG image with Gemini 2.5 Flash (cloud)...")
     ecg_result = analyze_ecg(image_path)
 
     # Step 3 — Combine both analyses into one unified recommendation
@@ -231,20 +242,18 @@ if __name__ == "__main__":
 
     print("BeatSafe — ECG Multimodal Analysis Module")
     print("=" * 50)
-    print("Powered by Gemma 4 (gemma-4-31b-it) via Google AI API")
+    print("Cloud component: Gemini 2.5 Flash via Google AI API")
+    print("Offline component: Gemma 3:4b via Ollama (see main.py)")
     print("=" * 50)
 
-    # Look for a local test ECG image in the current folder
     test_image_path = "test_ecg.jpg"
 
     if not os.path.exists(test_image_path):
-        # No test image found — guide the user
         print(f"\nNo test image found.")
         print(f"Please place an ECG image named '{test_image_path}' in the src/ folder.")
     else:
-        # Test image found — run ECG analysis with Gemma 4
         print(f"\nTest image found: {test_image_path}")
-        print("\nAnalyzing ECG with Gemma 4...")
+        print("\nAnalyzing ECG with Gemini 2.5 Flash...")
         print("-" * 50)
 
         result = analyze_ecg(test_image_path)
