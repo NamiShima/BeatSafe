@@ -340,7 +340,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
     gr.HTML("""
         <div class="header-block">
             <h1>BEATSAFE</h1>
-            <p>Offline Cardiac Triage AI · Brazilian Primary Care · Gemma 3 + Gemini Flash</p>
+            <p>Triagem Cardíaca Offline · Atenção Básica · Gemma 3 + Gemini Flash</p>
         </div>
     """)
 
@@ -351,139 +351,131 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         # ══════════════════════════════════════════════════════════
         with gr.Tab("⚡ Nova Triagem"):
 
-            # ── Input form — two columns ──
             with gr.Row():
 
-                # Left column — patient identity and ECG upload
                 with gr.Column(scale=1):
-                    gr.HTML('<div class="section-title">Patient Identity</div>')
+                    gr.HTML('<div class="section-title">Identificação do Paciente</div>')
                     patient_name = gr.Textbox(
-                        label="Patient Name (optional)",
-                        placeholder="e.g. João Silva",
+                        label="Nome do Paciente (opcional)",
+                        placeholder="Ex: João Silva",
                         lines=1
                     )
                     age = gr.Number(
-                        label="Age (years)",
+                        label="Idade (anos)",
                         value=50,
                         minimum=1,
                         maximum=120
                     )
                     sex = gr.Radio(
-                        label="Biological Sex",
-                        choices=["Male", "Female"],
-                        value="Male"
+                        label="Sexo Biológico",
+                        choices=["Masculino", "Feminino"],
+                        value="Masculino"
                     )
                     vitals = gr.Textbox(
-                        label="Vital Signs",
-                        placeholder="e.g. BP 160/100 mmHg, HR 98 bpm, SpO2 94%",
+                        label="Sinais Vitais",
+                        placeholder="Ex: PA 160/100 mmHg, FC 98 bpm, SatO2 94%",
                         lines=2
                     )
 
-                    gr.HTML('<div class="section-title">ECG Image (optional)</div>')
+                    gr.HTML('<div class="section-title">Imagem de ECG (opcional)</div>')
                     ecg_image = gr.Image(
-                        label="Upload ECG — Gemini Flash will analyze it",
+                        label="Enviar ECG — Gemini Flash irá analisar",
                         type="filepath",
                         sources=["upload"]
                     )
 
-                # Right column — clinical data
                 with gr.Column(scale=2):
-                    gr.HTML('<div class="section-title">Clinical Data</div>')
+                    gr.HTML('<div class="section-title">Dados Clínicos</div>')
                     chief_complaint = gr.Textbox(
-                        label="Chief Complaint",
-                        placeholder="e.g. Chest pain for 2 hours, pressure-like, radiating to left arm",
+                        label="Queixa Principal",
+                        placeholder="Ex: Dor no peito há 2 horas, tipo aperto, irradiando para o braço esquerdo",
                         lines=2
                     )
                     symptoms = gr.Textbox(
-                        label="Associated Symptoms",
-                        placeholder="e.g. Shortness of breath, cold sweating, nausea, dizziness",
+                        label="Sintomas Associados",
+                        placeholder="Ex: Falta de ar, sudorese fria, náusea, tontura",
                         lines=3
                     )
                     history = gr.Textbox(
-                        label="Medical History / Comorbidities",
-                        placeholder="e.g. Hypertension for 10 years, Type 2 Diabetes, former smoker",
+                        label="Histórico Médico / Comorbidades",
+                        placeholder="Ex: Hipertensão há 10 anos, Diabetes tipo 2, ex-tabagista",
                         lines=3
                     )
                     medications = gr.Textbox(
-                        label="Current Medications",
-                        placeholder="e.g. Metformin 850mg, Losartan 50mg, Aspirin 100mg",
+                        label="Medicamentos em Uso",
+                        placeholder="Ex: Metformina 850mg, Losartana 50mg, Aspirina 100mg",
                         lines=2
                     )
 
-            # ── Triage button ──
             triage_btn = gr.Button(
                 "Iniciar Triagem Cardíaca",
                 elem_classes=["triage-btn"]
             )
 
-            # ── Output panels ──
-            gr.HTML('<div class="section-title">Clinical Assessment</div>')
+            gr.HTML('<div class="section-title">Resultado da Avaliação</div>')
 
             with gr.Row():
                 with gr.Column():
                     symptom_output = gr.Textbox(
-                        label="Symptom Triage — Gemma 3 (Local)",
+                        label="Triagem por Sintomas — Gemma 3 (Local)",
                         lines=15,
                         interactive=False,
                         elem_classes=["output-box"]
                     )
                 with gr.Column():
                     ecg_output = gr.Textbox(
-                        label="ECG Analysis — Gemini Flash (Cloud)",
+                        label="Análise do ECG — Gemini Flash (Nuvem)",
                         lines=15,
                         interactive=False,
                         elem_classes=["output-box"]
                     )
 
             final_output = gr.Textbox(
-                label="Final Combined Recommendation",
+                label="Recomendação Final Combinada",
                 lines=12,
                 interactive=False,
                 elem_classes=["output-box"]
             )
 
-            gr.HTML('<div class="section-title">Clinical Report</div>')
+            gr.HTML('<div class="section-title">Relatório Clínico</div>')
             pdf_download = gr.File(
-                label="Download PDF Report — share via WhatsApp with the doctor",
+                label="Baixar Relatório PDF — compartilhe via WhatsApp com o médico",
                 interactive=False
             )
 
-            # ── Demo cases ──
             gr.Examples(
-                label="Quick Demo Cases",
+                label="Casos Demonstrativos",
                 examples=[
                     [
-                        "João Silva", 58, "Male",
-                        "Chest pain for 2 hours, pressure-like, radiating to left arm",
-                        "Cold sweating, shortness of breath, nausea",
-                        "BP 165/105 mmHg, HR 102 bpm, SpO2 91%",
-                        "Hypertension 10 years, Type 2 Diabetes, former smoker",
-                        "Metformin, Losartan",
+                        "João Silva", 58, "Masculino",
+                        "Dor no peito há 2 horas, tipo aperto, irradiando para o braço esquerdo",
+                        "Sudorese fria, falta de ar, náusea",
+                        "PA 165/105 mmHg, FC 102 bpm, SatO2 91%",
+                        "Hipertensão há 10 anos, Diabetes tipo 2, ex-tabagista",
+                        "Metformina, Losartana",
                         None
                     ],
                     [
-                        "Maria Oliveira", 52, "Female",
-                        "Routine visit, no pain currently",
-                        "Occasional mild fatigue",
-                        "BP 138/88 mmHg, HR 78 bpm, SpO2 98%",
-                        "Controlled hypertension, overweight BMI 28. Father died of MI at 62",
-                        "Hydrochlorothiazide 25mg",
+                        "Maria Oliveira", 52, "Feminino",
+                        "Consulta de rotina, sem dor no momento",
+                        "Cansaço leve ocasional",
+                        "PA 138/88 mmHg, FC 78 bpm, SatO2 98%",
+                        "Hipertensão controlada, sobrepeso IMC 28. Pai faleceu de IAM aos 62 anos",
+                        "Hidroclorotiazida 25mg",
                         None
                     ],
                 ],
                 inputs=[patient_name, age, sex, chief_complaint, symptoms, vitals, history, medications, ecg_image]
             )
 
-            # ── Footer ──
             gr.HTML("""
                 <div class="footer-note">
-                    BeatSafe supports health workers — it does not replace medical evaluation.
-                    Symptom triage runs offline via Gemma 3. ECG analysis requires internet via Gemini Flash.
-                    When in doubt, always refer the patient for in-person assessment. · SAMU 192
+                    O BeatSafe apoia agentes de saúde — não substitui avaliação médica.
+                    Triagem por sintomas roda offline via Gemma 3. Análise de ECG requer internet via Gemini Flash.
+                    Em caso de dúvida, encaminhe o paciente para avaliação presencial. · SAMU 192
                 </div>
             """)
 
-            # ── Wire up triage button ──
             triage_btn.click(
                 fn=run_full_analysis,
                 inputs=[
@@ -499,11 +491,9 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         # ══════════════════════════════════════════════════════════
         with gr.Tab("📋 Histórico"):
 
-            # ── Stats dashboard ──
             gr.HTML('<div class="section-title">Resumo de Atendimentos</div>')
             stats_html = gr.HTML(load_stats)
 
-            # ── Filter + refresh controls ──
             gr.HTML('<div class="section-title">Triagens Realizadas</div>')
             with gr.Row():
                 risk_filter = gr.Dropdown(
@@ -514,7 +504,6 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 )
                 refresh_btn = gr.Button("🔄 Atualizar", scale=1)
 
-            # ── History table — colunas ajustadas para evitar scroll horizontal ──
             history_table = gr.Dataframe(
                 headers=["Data/Hora", "Paciente", "Idade", "Risco", "Queixa Principal", "Sinais Vitais"],
                 datatype=["str", "str", "number", "str", "str", "str"],
@@ -524,13 +513,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 column_widths=["130px", "120px", "60px", "110px", "280px", "200px"]
             )
 
-            # ── Wire up filter and refresh ──
-            risk_filter.change(
-                fn=load_history,
-                inputs=[risk_filter],
-                outputs=[history_table]
-            )
-
+            risk_filter.change(fn=load_history, inputs=[risk_filter], outputs=[history_table])
             refresh_btn.click(
                 fn=lambda f: (load_history(f), load_stats()),
                 inputs=[risk_filter],
@@ -542,7 +525,6 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                     Histórico armazenado localmente em beatsafe_history.db — nenhum dado sai do dispositivo.
                 </div>
             """)
-
 
         # ══════════════════════════════════════════════════════════
         # TAB 3 — ASSISTENTE DE DÚVIDAS
@@ -574,6 +556,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             chat_btn.click(fn=chat_with_beatsafe, inputs=[chat_input, chatbot], outputs=[chat_input, chatbot])
             chat_input.submit(fn=chat_with_beatsafe, inputs=[chat_input, chatbot], outputs=[chat_input, chatbot])
+
         # ══════════════════════════════════════════════════════════
         # TAB 4 — UNIDADES DE SAÚDE PRÓXIMAS
         # ══════════════════════════════════════════════════════════
@@ -581,7 +564,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML('<div class="section-title">Hospitais e Postos de Saúde Próximos</div>')
             gr.HTML("""
-                <div style="color:#888; font-size:0.78rem; letter-spacing:1px; margin-bottom:12px;">
+                <div style="color:#888; font-size:0.78rem; margin-bottom:12px;">
                     Localiza UBS, UPA, hospitais e SAMU próximos à sua localização atual.
                     Requer conexão com internet e permissão de localização no navegador.
                 </div>
@@ -589,58 +572,46 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML("""
                 <div style="background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:20px;">
-
-                    <div style="color:#aaa; font-size:0.78rem; margin-bottom:20px; letter-spacing:1px;">
+                    <div style="color:#aaa; font-size:0.78rem; margin-bottom:20px;">
                         Clique no botão desejado para abrir o Google Maps com as unidades mais próximas de você.
-                        O navegador vai pedir permissão de localização automaticamente.
                     </div>
-
                     <div style="display:flex; flex-direction:column; gap:12px;">
-
                         <a href="https://www.google.com/maps/search/hospital+próximo" target="_blank"
                            style="display:block; background:#e63946; color:white; border-radius:4px;
-                                  padding:14px 16px; font-size:0.85rem;
-                                  text-decoration:none; text-align:center;">
+                                  padding:14px 16px; font-size:0.85rem; text-decoration:none; text-align:center;">
                             HOSPITAIS
                         </a>
-
                         <a href="https://www.google.com/maps/search/UBS+posto+de+saúde+próximo" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
                                   border:1px solid #e63946; border-radius:4px; padding:14px 16px;
                                   text-decoration:none; text-align:center;">
                             POSTO DE SAÚDE
                         </a>
-
                         <a href="https://www.google.com/maps/search/farmácia+próxima" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
                                   border:1px solid #e63946; border-radius:4px; padding:14px 16px;
                                   text-decoration:none; text-align:center;">
                             FARMÁCIAS
                         </a>
-
                         <a href="https://www.google.com/maps/search/UPA+próxima" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
                                   border:1px solid #e63946; border-radius:4px; padding:14px 16px;
                                   text-decoration:none; text-align:center;">
                             UPA
                         </a>
-
                         <a href="https://www.google.com/maps/search/pronto+socorro+próximo" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
                                   border:1px solid #e63946; border-radius:4px; padding:14px 16px;
                                   text-decoration:none; text-align:center;">
                             PRONTO-SOCORRO
                         </a>
-
                         <a href="https://www.google.com/maps/search/SAMU+192" target="_blank"
                            style="display:block; background:#1a1a1a; color:#e0e0e0;
                                   border:1px solid #e63946; border-radius:4px; padding:14px 16px;
                                   text-decoration:none; text-align:center;">
                             SAMU 192
                         </a>
-
                     </div>
-
                     <div style="margin-top:20px; padding:12px; background:#111;
                                 border-radius:4px; border-left:3px solid #e63946;">
                         <div style="color:#e63946; font-size:0.75rem; letter-spacing:2px; font-weight:700;">
@@ -650,14 +621,11 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                             Ligue <strong>SAMU 192</strong> imediatamente — não espere pelo mapa.
                         </div>
                     </div>
-
                 </div>
-
                 <div class="footer-note" style="margin-top:16px;">
                     Abre o Google Maps · Nenhum dado é enviado ao BeatSafe.
                 </div>
             """)
-
 
         # ══════════════════════════════════════════════════════════
         # TAB 5 — SUGESTÃO DE MEDICAMENTOS
@@ -666,7 +634,6 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML('<div class="section-title">Sugestão de Medicamentos — Protocolo SUS</div>')
 
-            # ── Disclaimer obrigatório ──
             gr.HTML("""
                 <div style="background:#1a1a1a; border-left:4px solid #e63946;
                             border-radius:4px; padding:12px 16px; margin-bottom:16px;">
@@ -705,21 +672,12 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 </div>
             """)
 
-            med_btn.click(
-                fn=suggest_medications,
-                inputs=[med_input],
-                outputs=[med_output]
-            )
-if __name__ == "__main__":
-    app.launch(
-        share=True,
-        show_error=True
-    )
+            med_btn.click(fn=suggest_medications, inputs=[med_input], outputs=[med_output])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LAUNCH
 # ─────────────────────────────────────────────────────────────────────────────
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.launch(
         share=True,
         show_error=True
