@@ -677,10 +677,9 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                     <div style="color:#aaa; font-size:0.82rem; line-height:1.6;">
                         As sugestões abaixo são baseadas exclusivamente no
                         <strong style="color:#e0e0e0;">Caderno de Atenção Básica nº 14</strong>
-                        e na RENAME (Ministério da Saúde).
-                        <strong style="color:#e63946;">Prescrição é ato médico exclusivo.</strong>
-                        Este recurso apoia o agente de saúde — nunca substitui avaliação médica.
-                        Em emergências, acione o <strong style="color:#e0e0e0;">SAMU 192</strong> antes de qualquer medicação.
+                        e na <strong style="color:#e0e0e0;">RENAME (Ministério da Saúde)</strong>.
+                        A prescrição é ato médico exclusivo. Em emergências, acione o
+                        <strong style="color:#e63946;">SAMU 192</strong> antes de qualquer medicação.
                     </div>
                 </div>
             """)
