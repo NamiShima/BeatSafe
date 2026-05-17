@@ -251,7 +251,59 @@ def chat_with_beatsafe(message: str, chat_history: list):
 
 
 
-def load_stats() -> str:
+MEDICATION_SYSTEM_PROMPT = """
+Você é um auxiliar farmacológico do BeatSafe, baseado exclusivamente no
+Caderno de Atenção Básica nº 14 (Ministério da Saúde, 2006) e na RENAME
+(Relação Nacional de Medicamentos Essenciais).
+
+Dado o quadro clínico informado, sugira medicamentos do protocolo SUS
+seguindo esta estrutura:
+
+MEDICAMENTOS SUGERIDOS (Protocolo SUS):
+  [Liste cada medicamento com: nome genérico, dose, via, frequência e indicação]
+
+CONTRAINDICAÇÕES IMPORTANTES:
+  [Liste as principais contraindicações para o quadro descrito]
+
+INTERAÇÕES A VERIFICAR:
+  [Interações relevantes com medicamentos comuns]
+
+ORIENTAÇÕES AO AGENTE:
+  [O que verificar antes de administrar ou orientar]
+
+Regras absolutas:
+  - Apenas medicamentos da RENAME/protocolo SUS
+  - Nunca sugira medicamentos sem indicação clara no protocolo
+  - Sempre reforce que prescrição é ato médico exclusivo
+  - Em emergências: SAMU 192 antes de qualquer medicação
+"""
+
+
+def suggest_medications(clinical_info: str):
+    """
+    Streaming medication suggestion based on SUS protocols.
+    Always includes disclaimer that prescription is a medical act.
+    """
+
+    import ollama
+
+    if not clinical_info.strip():
+        yield "Por favor, descreva o quadro clínico do paciente."
+        return
+
+    stream = ollama.chat(
+        model="gemma3:4b",
+        messages=[
+            {"role": "system", "content": MEDICATION_SYSTEM_PROMPT},
+            {"role": "user",   "content": f"Quadro clínico: {clinical_info}"}
+        ],
+        stream=True
+    )
+
+    accumulated = ""
+    for chunk in stream:
+        accumulated += chunk["message"]["content"]
+        yield accumulated
     """Returns an HTML summary of triage statistics."""
     s = get_stats()
     return f"""
@@ -604,10 +656,68 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
             """)
 
 
+        # ══════════════════════════════════════════════════════════
+        # TAB 5 — SUGESTÃO DE MEDICAMENTOS
+        # ══════════════════════════════════════════════════════════
+        with gr.Tab("💊 Medicamentos"):
+
+            gr.HTML('<div class="section-title">Sugestão de Medicamentos — Protocolo SUS</div>')
+
+            # ── Disclaimer obrigatório ──
+            gr.HTML("""
+                <div style="background:#1a1a1a; border-left:4px solid #e63946;
+                            border-radius:4px; padding:12px 16px; margin-bottom:16px;">
+                    <div style="color:#e63946; font-size:0.75rem; font-weight:600;
+                                letter-spacing:1px; margin-bottom:4px;">
+                        AVISO IMPORTANTE
+                    </div>
+                    <div style="color:#aaa; font-size:0.82rem; line-height:1.6;">
+                        As sugestões abaixo são baseadas exclusivamente no
+                        <strong style="color:#e0e0e0;">Caderno de Atenção Básica nº 14</strong>
+                        e na RENAME (Ministério da Saúde).
+                        <strong style="color:#e63946;">Prescrição é ato médico exclusivo.</strong>
+                        Este recurso apoia o agente de saúde — nunca substitui avaliação médica.
+                        Em emergências, acione o <strong style="color:#e0e0e0;">SAMU 192</strong> antes de qualquer medicação.
+                    </div>
+                </div>
+            """)
+
+            med_input = gr.Textbox(
+                label="Descreva o quadro clínico",
+                placeholder="Ex: Paciente hipertenso, 60 anos, PA 170/110 mmHg, sem dor no peito, tomou losartana hoje",
+                lines=3
+            )
+
+            med_btn = gr.Button("Consultar Protocolo SUS", elem_classes=["triage-btn"])
+
+            med_output = gr.Textbox(
+                label="Sugestão baseada no Protocolo SUS",
+                lines=18,
+                interactive=False,
+                elem_classes=["output-box"]
+            )
+
+            gr.HTML("""
+                <div class="footer-note">
+                    Baseado no Caderno AB nº14 e RENAME · Prescrição é ato médico exclusivo · SAMU 192
+                </div>
+            """)
+
+            med_btn.click(
+                fn=suggest_medications,
+                inputs=[med_input],
+                outputs=[med_output]
+            )
+if __name__ == "__main__":
+    app.launch(
+        share=True,
+        show_error=True
+    )
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LAUNCH
 # ─────────────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.launch(
         share=True,
         show_error=True
