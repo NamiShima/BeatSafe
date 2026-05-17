@@ -1,3 +1,8 @@
+# BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
+# Powered by Gemma 3 (4B) via Ollama - runs fully offline
+# Designed for Gemma 4 migration when available on Ollama
+# Author: NamiShima
+# Competition: Gemma 4 Good Hackathon 2026
 from fpdf import FPDF                  # PDF generation library
 from fpdf.enums import XPos, YPos      # Updated position enums for fpdf2 v2.5+
 from datetime import datetime          # Timestamp for the report
