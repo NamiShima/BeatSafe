@@ -198,7 +198,7 @@ def triage(patient_info: str) -> str:
 
     # Send the request to the local Gemma model — no internet required
     response = ollama.chat(
-        model="gemma3:12b",           # Local model installed via Ollama
+        model="gemma3:4b",            # Local model installed via Ollama
         messages=[
             {
                 "role": "system",
