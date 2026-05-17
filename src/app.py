@@ -294,7 +294,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
     # ── Header — shared across both tabs ──
     gr.HTML("""
         <div class="header-block">
-            <h1>🫀 BEATSAFE</h1>
+            <h1>BEATSAFE</h1>
             <p>Offline Cardiac Triage AI · Brazilian Primary Care · Gemma 3 + Gemini Flash</p>
         </div>
     """)
@@ -367,7 +367,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             # ── Triage button ──
             triage_btn = gr.Button(
-                "⚡ RUN CARDIAC TRIAGE",
+                "Iniciar Triagem Cardíaca",
                 elem_classes=["triage-btn"]
             )
 
@@ -377,21 +377,21 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
             with gr.Row():
                 with gr.Column():
                     symptom_output = gr.Textbox(
-                        label="🫀 Symptom Triage — Gemma 3 (Local)",
+                        label="Symptom Triage — Gemma 3 (Local)",
                         lines=15,
                         interactive=False,
                         elem_classes=["output-box"]
                     )
                 with gr.Column():
                     ecg_output = gr.Textbox(
-                        label="📊 ECG Analysis — Gemini Flash (Cloud)",
+                        label="ECG Analysis — Gemini Flash (Cloud)",
                         lines=15,
                         interactive=False,
                         elem_classes=["output-box"]
                     )
 
             final_output = gr.Textbox(
-                label="🎯 Final Combined Recommendation",
+                label="Final Combined Recommendation",
                 lines=12,
                 interactive=False,
                 elem_classes=["output-box"]
@@ -399,7 +399,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML('<div class="section-title">Clinical Report</div>')
             pdf_download = gr.File(
-                label="📋 Download PDF Report — share via WhatsApp with the doctor",
+                label="Download PDF Report — share via WhatsApp with the doctor",
                 interactive=False
             )
 
