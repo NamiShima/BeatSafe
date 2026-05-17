@@ -269,7 +269,7 @@ def chat_with_beatsafe(message: str, chat_history: list) -> tuple:
     messages.append({"role": "user", "content": message})
 
     # Send to local Gemma 3 — no internet required
-    response = ollama.chat(model="gemma3:12b", messages=messages)
+    response = ollama.chat(model="gemma3:4b", messages=messages)
     answer = response["message"]["content"]
 
     # Append new exchange to history and clear input
