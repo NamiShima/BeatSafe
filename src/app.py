@@ -602,165 +602,101 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 </div>
             """)
 
-            # ── Mapa interativo via OpenStreetMap + Overpass API ──
+            # ── Busca via botões que abrem links diretos — sem iframe ──
             gr.HTML("""
                 <div style="background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:16px;">
 
-                    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-                        <button onclick="findNearby('hospital')"
-                            style="background:#e63946; color:white; border:none; border-radius:4px;
-                                   padding:8px 16px; cursor:pointer; font-family:monospace;
-                                   font-size:0.8rem; letter-spacing:1px;">
-                            🏥 HOSPITAIS
-                        </button>
-                        <button onclick="findNearby('clinic')"
-                            style="background:#1a1a1a; color:#e0e0e0; border:1px solid #e63946;
-                                   border-radius:4px; padding:8px 16px; cursor:pointer;
-                                   font-family:monospace; font-size:0.8rem; letter-spacing:1px;">
-                            🩺 UBS / POSTOS
-                        </button>
-                        <button onclick="findNearby('pharmacy')"
-                            style="background:#1a1a1a; color:#e0e0e0; border:1px solid #e63946;
-                                   border-radius:4px; padding:8px 16px; cursor:pointer;
-                                   font-family:monospace; font-size:0.8rem; letter-spacing:1px;">
+                    <div style="color:#aaa; font-size:0.78rem; margin-bottom:16px;">
+                        Clique no botão desejado — seu navegador vai pedir permissão de localização
+                        e abrir o mapa com as unidades mais próximas de você.
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+
+                        <a onclick="openNearby('hospital')" href="#"
+                           style="display:block; background:#e63946; color:white; border:none;
+                                  border-radius:4px; padding:12px 16px; cursor:pointer;
+                                  font-family:monospace; font-size:0.85rem; letter-spacing:2px;
+                                  text-decoration:none; text-align:center;">
+                            🏥 HOSPITAIS PRÓXIMOS
+                        </a>
+
+                        <a onclick="openNearby('clinic')" href="#"
+                           style="display:block; background:#1a1a1a; color:#e0e0e0;
+                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
+                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
+                                  letter-spacing:2px; text-decoration:none; text-align:center;">
+                            🩺 UBS / POSTOS DE SAÚDE
+                        </a>
+
+                        <a onclick="openNearby('pharmacy')" href="#"
+                           style="display:block; background:#1a1a1a; color:#e0e0e0;
+                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
+                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
+                                  letter-spacing:2px; text-decoration:none; text-align:center;">
                             💊 FARMÁCIAS
-                        </button>
-                        <button onclick="findNearby('emergency')"
-                            style="background:#1a1a1a; color:#e0e0e0; border:1px solid #e63946;
-                                   border-radius:4px; padding:8px 16px; cursor:pointer;
-                                   font-family:monospace; font-size:0.8rem; letter-spacing:1px;">
+                        </a>
+
+                        <a onclick="openNearby('emergency')" href="#"
+                           style="display:block; background:#1a1a1a; color:#e0e0e0;
+                                  border:1px solid #e63946; border-radius:4px; padding:12px 16px;
+                                  cursor:pointer; font-family:monospace; font-size:0.85rem;
+                                  letter-spacing:2px; text-decoration:none; text-align:center;">
                             🚑 UPA / PRONTO-SOCORRO
-                        </button>
+                        </a>
+
                     </div>
 
-                    <!-- Mapa OpenStreetMap embed -->
-                    <div id="map-container" style="width:100%; height:420px; border-radius:4px;
-                         border:1px solid #2a2a2a; overflow:hidden; background:#111;">
-                        <iframe id="map-frame"
-                            src="https://www.openstreetmap.org/export/embed.html?bbox=-46.7,-23.6,-46.5,-23.4&layer=mapnik"
-                            style="width:100%; height:100%; border:none;"
-                            allowfullscreen>
-                        </iframe>
+                    <div id="map-status" style="color:#888; font-size:0.75rem;
+                         letter-spacing:1px; margin-top:12px; text-align:center;">
+                        Aguardando seleção...
                     </div>
 
-                    <!-- Lista de resultados -->
-                    <div id="results-list" style="margin-top:12px;"></div>
-
-                    <div id="status-msg" style="color:#888; font-size:0.75rem;
-                         letter-spacing:1px; margin-top:8px; text-align:center;">
-                        Clique em um botão acima para buscar unidades próximas à sua localização.
-                    </div>
                 </div>
 
                 <script>
-                function findNearby(type) {
-                    var status = document.getElementById('status-msg');
-                    var resultsList = document.getElementById('results-list');
+                function openNearby(type) {
+                    var status = document.getElementById('map-status');
                     status.style.color = '#888';
                     status.innerText = 'Obtendo sua localização...';
-                    resultsList.innerHTML = '';
 
                     if (!navigator.geolocation) {
                         status.style.color = '#e63946';
-                        status.innerText = 'Geolocalização não suportada neste navegador.';
+                        status.innerText = 'Geolocalização não suportada. Use a busca manual no Google Maps.';
                         return;
                     }
 
                     navigator.geolocation.getCurrentPosition(function(pos) {
                         var lat = pos.coords.latitude;
                         var lon = pos.coords.longitude;
-                        var radius = 3000; // 3km
 
-                        // Build Overpass API query based on type
-                        var osmTag = '';
-                        var label = '';
-                        if (type === 'hospital') {
-                            osmTag = 'amenity=hospital';
-                            label = 'Hospitais';
-                        } else if (type === 'clinic') {
-                            osmTag = 'amenity=clinic';
-                            label = 'UBS / Postos de Saúde';
-                        } else if (type === 'pharmacy') {
-                            osmTag = 'amenity=pharmacy';
-                            label = 'Farmácias';
-                        } else if (type === 'emergency') {
-                            osmTag = 'amenity=hospital';
-                            label = 'UPA / Pronto-Socorro';
-                        }
+                        var queries = {
+                            'hospital':  'hospital',
+                            'clinic':    'UBS+posto+de+saude',
+                            'pharmacy':  'farmácia',
+                            'emergency': 'UPA+pronto+socorro'
+                        };
 
-                        status.innerText = 'Buscando ' + label + ' em até 3km...';
+                        var q = queries[type] || 'hospital';
+                        var url = 'https://www.google.com/maps/search/' + q
+                                + '/@' + lat + ',' + lon + ',14z';
 
-                        // Update map to user location
-                        var delta = 0.03;
-                        var bbox = (lon-delta)+','+(lat-delta)+','+(lon+delta)+','+(lat+delta);
-                        var mapFrame = document.getElementById('map-frame');
-                        mapFrame.src = 'https://www.openstreetmap.org/export/embed.html?bbox='
-                            + bbox + '&layer=mapnik&marker=' + lat + ',' + lon;
-
-                        // Query Overpass API
-                        var query = '[out:json][timeout:10];('
-                            + 'node[' + osmTag + '](around:' + radius + ',' + lat + ',' + lon + ');'
-                            + 'way[' + osmTag + '](around:' + radius + ',' + lat + ',' + lon + ');'
-                            + ');out center 10;';
-
-                        fetch('https://overpass-api.de/api/interpreter', {
-                            method: 'POST',
-                            body: query
-                        })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            var elements = data.elements;
-                            if (!elements || elements.length === 0) {
-                                status.style.color = '#ffc107';
-                                status.innerText = 'Nenhuma unidade encontrada em 3km. Tente aumentar a área.';
-                                return;
-                            }
-
-                            status.style.color = '#28a745';
-                            status.innerText = elements.length + ' unidade(s) encontrada(s) próximas a você.';
-
-                            // Render results list
-                            var html = '<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">';
-                            elements.forEach(function(el) {
-                                var name = (el.tags && el.tags.name) ? el.tags.name : 'Nome não disponível';
-                                var addr = '';
-                                if (el.tags) {
-                                    if (el.tags['addr:street']) addr += el.tags['addr:street'];
-                                    if (el.tags['addr:housenumber']) addr += ', ' + el.tags['addr:housenumber'];
-                                    if (el.tags['addr:city']) addr += ' — ' + el.tags['addr:city'];
-                                }
-                                var elLat = el.lat || (el.center && el.center.lat);
-                                var elLon = el.lon || (el.center && el.center.lon);
-                                var mapsUrl = elLat
-                                    ? 'https://www.openstreetmap.org/?mlat='+elLat+'&mlon='+elLon+'#map=17/'+elLat+'/'+elLon
-                                    : '#';
-
-                                html += '<div style="background:#111; border:1px solid #2a2a2a; border-radius:4px; padding:10px 12px;">'
-                                    + '<div style="color:#e0e0e0; font-size:0.85rem; font-weight:700;">' + name + '</div>'
-                                    + (addr ? '<div style="color:#888; font-size:0.75rem; margin-top:2px;">' + addr + '</div>' : '')
-                                    + '<a href="' + mapsUrl + '" target="_blank" style="color:#e63946; font-size:0.72rem; '
-                                    + 'letter-spacing:1px; text-decoration:none; display:inline-block; margin-top:6px;">'
-                                    + '→ VER NO MAPA</a>'
-                                    + '</div>';
-                            });
-                            html += '</div>';
-                            resultsList.innerHTML = html;
-                        })
-                        .catch(function(err) {
-                            status.style.color = '#e63946';
-                            status.innerText = 'Erro ao buscar dados. Verifique sua conexão com internet.';
-                        });
+                        status.style.color = '#28a745';
+                        status.innerText = 'Abrindo mapa com sua localização...';
+                        window.open(url, '_blank');
 
                     }, function(err) {
                         status.style.color = '#e63946';
-                        status.innerText = 'Permissão de localização negada. Ative nas configurações do navegador.';
+                        status.innerText = 'Permissão negada. Ative a localização no navegador e tente novamente.';
                     });
+
+                    return false;
                 }
                 </script>
 
                 <div class="footer-note" style="margin-top:16px;">
-                    Dados de localização fornecidos pelo OpenStreetMap · Nenhuma informação é enviada ao BeatSafe.
-                    Em caso de emergência, ligue SAMU 192 imediatamente — não espere pelo mapa.
+                    Abre o Google Maps com sua localização atual · Nenhum dado é enviado ao BeatSafe.
+                    Em emergência, ligue SAMU 192 imediatamente — não espere pelo mapa.
                 </div>
             """)
 
