@@ -546,7 +546,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                            style="display:block; background:#e63946; color:white; border-radius:4px;
                                   padding:14px 16px; font-size:0.85rem;
                                   text-decoration:none; text-align:center;">
-                            HOSPITAIS PRÓXIMOS
+                            HOSPITAIS
                         </a>
 
                         <a href="https://www.google.com/maps/search/UBS+posto+de+saúde+próximo" target="_blank"
