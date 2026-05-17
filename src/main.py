@@ -184,35 +184,45 @@ def triage(patient_info: str) -> str:
     """
     Sends patient data to Gemma 3 running locally via Ollama.
     Returns a structured cardiac risk assessment in Portuguese.
-
-    The model runs entirely offline — no data leaves the machine.
-    This is critical for deployment in low-connectivity Brazilian primary care units.
-
-    Args:
-        patient_info: String containing symptoms, risk factors and vital signs
-
-    Returns:
-        Structured clinical recommendation with risk level and action steps
-        formatted for community health workers (agentes de saúde)
     """
 
-    # Send the request to the local Gemma model — no internet required
     response = ollama.chat(
-        model="gemma3:4b",            # Local model installed via Ollama
+        model="gemma3:4b",
         messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT  # Full clinical protocol as context
-            },
-            {
-                "role": "user",
-                "content": patient_info  # Patient data provided by health worker
-            }
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": patient_info}
         ]
     )
-
-    # Extract and return the model's text response
     return response["message"]["content"]
+
+
+def triage_stream(patient_info: str):
+    """
+    Streaming version of triage() — yields partial text as Gemma generates it.
+    Used by the Gradio interface so the user sees the response appearing
+    word by word instead of waiting for the full response.
+
+    Args:
+        patient_info: Patient data string
+
+    Yields:
+        Partial response strings (cumulative)
+    """
+
+    stream = ollama.chat(
+        model="gemma3:4b",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": patient_info}
+        ],
+        stream=True   # Enable token-by-token streaming
+    )
+
+    accumulated = ""
+    for chunk in stream:
+        token = chunk["message"]["content"]
+        accumulated += token
+        yield accumulated
 
 
 def triage_and_save_pdf(
