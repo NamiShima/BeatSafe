@@ -12,130 +12,121 @@ from history import save_triage, get_history, get_stats   # SQLite history modul
 # CUSTOM CSS — Dark medical theme with red accent
 # ─────────────────────────────────────────────────────────────────────────────
 CUSTOM_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
 * {
-    font-family: 'Courier New', monospace;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
     box-sizing: border-box;
 }
 
 .gradio-container {
-    background-color: #0d0d0d !important;
-    max-width: 960px !important;
+    background-color: #F8FAFC !important;
+    max-width: 980px !important;
     margin: 0 auto !important;
 }
 
 .header-block {
-    text-align: center;
-    padding: 32px 0 16px 0;
-    border-bottom: 1px solid #2a2a2a;
+    background: #1B4F8A;
+    padding: 20px 28px;
     margin-bottom: 24px;
+    border-radius: 0 0 8px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .header-block h1 {
-    color: #e63946;
-    font-size: 2.4rem;
-    font-weight: 700;
-    letter-spacing: 4px;
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     margin: 0;
 }
 
 .header-block p {
-    color: #888;
-    font-size: 0.85rem;
-    margin: 8px 0 0 0;
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    color: #A8C4E8;
+    font-size: 0.78rem;
+    margin: 0;
+    letter-spacing: 0;
 }
 
 label, .label-wrap {
-    color: #aaa !important;
-    font-size: 0.75rem !important;
-    letter-spacing: 2px !important;
-    text-transform: uppercase !important;
+    color: #475569 !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
 }
 
-textarea, input[type="text"] {
-    background-color: #1a1a1a !important;
-    border: 1px solid #2a2a2a !important;
-    border-radius: 4px !important;
-    color: #e0e0e0 !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 0.9rem !important;
+textarea, input[type="text"], input[type="number"] {
+    background-color: #ffffff !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 6px !important;
+    color: #1E293B !important;
+    font-size: 0.88rem !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 textarea:focus, input:focus {
-    border-color: #e63946 !important;
+    border-color: #1B4F8A !important;
     outline: none !important;
+    box-shadow: 0 0 0 3px rgba(27,79,138,0.1) !important;
 }
 
 .triage-btn {
-    background-color: #e63946 !important;
+    background-color: #1B4F8A !important;
     color: white !important;
     border: none !important;
-    border-radius: 4px !important;
+    border-radius: 6px !important;
     font-size: 0.85rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 3px !important;
-    text-transform: uppercase !important;
-    padding: 14px 32px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: none !important;
+    padding: 12px 32px !important;
     cursor: pointer !important;
     width: 100% !important;
     transition: background-color 0.2s !important;
 }
 
 .triage-btn:hover {
-    background-color: #c1121f !important;
+    background-color: #153D6E !important;
 }
 
 .output-box textarea {
-    background-color: #111 !important;
-    border: 1px solid #2a2a2a !important;
-    color: #e0e0e0 !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 0.88rem !important;
+    background-color: #ffffff !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #1E293B !important;
+    font-size: 0.85rem !important;
     line-height: 1.7 !important;
     min-height: 300px !important;
 }
 
 .section-title {
-    color: #e63946;
-    font-size: 0.75rem;
-    letter-spacing: 3px;
+    color: #1B4F8A;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    border-bottom: 1px solid #2a2a2a;
-    padding-bottom: 8px;
-    margin: 16px 0 12px 0;
+    border-bottom: 1.5px solid #E2E8F0;
+    padding-bottom: 6px;
+    margin: 20px 0 12px 0;
 }
 
 .footer-note {
     text-align: center;
-    color: #555;
+    color: #94A3B8;
     font-size: 0.72rem;
-    letter-spacing: 1px;
     margin-top: 24px;
     padding-top: 16px;
-    border-top: 1px solid #1a1a1a;
+    border-top: 1px solid #E2E8F0;
 }
 
 .stat-box {
-    background-color: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 6px;
+    background-color: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
     padding: 16px;
     text-align: center;
-}
-
-.stat-box h2 {
-    color: #e63946;
-    font-size: 2rem;
-    margin: 0;
-}
-
-.stat-box p {
-    color: #888;
-    font-size: 0.7rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin: 4px 0 0 0;
 }
 """
 
@@ -282,21 +273,21 @@ def load_stats() -> str:
     s = get_stats()
     return f"""
     <div style="display: flex; gap: 12px; margin: 8px 0;">
-        <div class="stat-box" style="flex:1; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:16px; text-align:center;">
-            <div style="color:#e0e0e0; font-size:1.8rem; font-weight:700;">{s['total']}</div>
-            <div style="color:#888; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:4px;">Total</div>
+        <div style="flex:1; background:#ffffff; border:1px solid #E2E8F0; border-radius:8px; padding:16px; text-align:center;">
+            <div style="color:#1E293B; font-size:1.8rem; font-weight:600;">{s['total']}</div>
+            <div style="color:#64748B; font-size:0.72rem; font-weight:500; text-transform:uppercase; margin-top:4px;">Total</div>
         </div>
-        <div class="stat-box" style="flex:1; background:#1a1a1a; border:1px solid #e63946; border-radius:6px; padding:16px; text-align:center;">
-            <div style="color:#e63946; font-size:1.8rem; font-weight:700;">{s['alto_risco']}</div>
-            <div style="color:#888; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:4px;">Alto Risco</div>
+        <div style="flex:1; background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:16px; text-align:center;">
+            <div style="color:#DC2626; font-size:1.8rem; font-weight:600;">{s['alto_risco']}</div>
+            <div style="color:#991B1B; font-size:0.72rem; font-weight:500; text-transform:uppercase; margin-top:4px;">Alto Risco</div>
         </div>
-        <div class="stat-box" style="flex:1; background:#1a1a1a; border:1px solid #ffc107; border-radius:6px; padding:16px; text-align:center;">
-            <div style="color:#ffc107; font-size:1.8rem; font-weight:700;">{s['moderado']}</div>
-            <div style="color:#888; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:4px;">Moderado</div>
+        <div style="flex:1; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:16px; text-align:center;">
+            <div style="color:#D97706; font-size:1.8rem; font-weight:600;">{s['moderado']}</div>
+            <div style="color:#92400E; font-size:0.72rem; font-weight:500; text-transform:uppercase; margin-top:4px;">Moderado</div>
         </div>
-        <div class="stat-box" style="flex:1; background:#1a1a1a; border:1px solid #28a745; border-radius:6px; padding:16px; text-align:center;">
-            <div style="color:#28a745; font-size:1.8rem; font-weight:700;">{s['baixo_risco']}</div>
-            <div style="color:#888; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:4px;">Baixo Risco</div>
+        <div style="flex:1; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:16px; text-align:center;">
+            <div style="color:#16A34A; font-size:1.8rem; font-weight:600;">{s['baixo_risco']}</div>
+            <div style="color:#14532D; font-size:0.72rem; font-weight:500; text-transform:uppercase; margin-top:4px;">Baixo Risco</div>
         </div>
     </div>
     """
@@ -310,8 +301,14 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
     # ── Header — shared across both tabs ──
     gr.HTML("""
         <div class="header-block">
-            <h1>🫀 BEATSAFE</h1>
-            <p>Offline Cardiac Triage AI · Brazilian Primary Care · Gemma 3 + Gemini Flash</p>
+            <div>
+                <h1>🫀 BeatSafe</h1>
+                <p>Triagem Cardíaca para Atenção Básica · SUS · Gemma 3 + Gemini Flash</p>
+            </div>
+            <div style="color:#A8C4E8; font-size:0.75rem; text-align:right;">
+                SAMU 192<br>
+                <span style="font-size:1.1rem; font-weight:600; color:#fff;">192</span>
+            </div>
         </div>
     """)
 
