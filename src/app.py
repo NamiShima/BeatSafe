@@ -3,7 +3,7 @@ import os                        # File path operations
 import tempfile                  # Temporary file handling for PDF download
 
 # Import core BeatSafe modules
-from main import triage
+from main import triage, triage_stream
 from ecg import analyze_ecg, combined_analysis
 from pdf_report import generate_pdf
 from history import save_triage, get_history, get_stats   # SQLite history module
@@ -130,20 +130,12 @@ def run_full_analysis(
     ecg_image
 ):
     """
-    Runs the complete BeatSafe pipeline and generates a PDF report.
-    Automatically saves the triage to the SQLite history database.
-
-    Step 1 — Symptom triage via Gemma 3 local (offline)
-    Step 2 — ECG image analysis via Gemini 2.5 Flash (cloud, if image provided)
-    Step 3 — Combined final recommendation (if ECG provided)
-    Step 4 — PDF report generation for download and WhatsApp sharing
-    Step 5 — Save record to history database
-
-    Returns:
-        Tuple: symptom_output, ecg_output, final_output, pdf_file
+    Runs the complete BeatSafe pipeline with streaming for the triage step.
+    Yields partial results so the user sees text appearing in real time.
+    PDF and history are saved after the full triage is complete.
     """
 
-    # Assemble patient report string from form fields
+    # Assemble patient info string
     patient_info = f"""
     Paciente: {sex}, {age} anos {"— " + patient_name if patient_name else ""}
     Queixa principal: {chief_complaint}
@@ -153,18 +145,24 @@ def run_full_analysis(
     Medicamentos em uso: {medications}
     """
 
-    # Step 1 — Offline symptom triage using local Gemma 3
-    symptom_result = triage(patient_info)
+    # Step 1 — Stream triage response token by token
+    symptom_result = ""
+    for partial in triage_stream(patient_info):
+        symptom_result = partial
+        yield partial, "Aguardando triagem...", "", None
 
-    # Step 2 — ECG analysis using Gemini (only if image was uploaded)
+    # Step 2 — ECG analysis (only if image provided)
     if ecg_image is not None:
-        ecg_result = analyze_ecg(ecg_image)
+        yield symptom_result, "Analisando ECG...", "", None
+        ecg_result   = analyze_ecg(ecg_image)
         final_result = combined_analysis(symptom_result, ecg_result)
     else:
-        ecg_result = "Nenhuma imagem de ECG fornecida."
+        ecg_result   = "Nenhuma imagem de ECG fornecida."
         final_result = symptom_result
 
-    # Step 3 — Generate PDF report for download
+    yield symptom_result, ecg_result, final_result, None
+
+    # Step 3 — Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), "beatsafe_report.pdf")
     generate_pdf(
         patient_name=patient_name,
@@ -181,7 +179,7 @@ def run_full_analysis(
         output_path=pdf_path
     )
 
-    # Step 4 — Save triage to SQLite history database
+    # Step 4 — Save to history
     save_triage(
         patient_name=patient_name,
         age=int(age),
@@ -196,7 +194,7 @@ def run_full_analysis(
         pdf_path=pdf_path
     )
 
-    return symptom_result, ecg_result, final_result, pdf_path
+    yield symptom_result, ecg_result, final_result, pdf_path
 
 
 def load_history(risk_filter: str) -> list:
@@ -230,35 +228,27 @@ Regras:
 """
 
 
-def chat_with_beatsafe(message: str, chat_history: list) -> tuple:
+def chat_with_beatsafe(message: str, chat_history: list):
     """
-    Sends a question to Gemma 3 (local, offline) and returns the answer.
-    Maintains full conversation history for context-aware follow-up questions.
-
-    Args:
-        message:      Current question from the health agent
-        chat_history: List of previous [user, assistant] message pairs
-
-    Returns:
-        Tuple of (empty string to clear input, updated chat history)
+    Streaming chatbot — yields partial responses token by token.
     """
 
     import ollama
 
-    # Build messages list with full conversation history for context
     messages = [{"role": "system", "content": CHATBOT_SYSTEM_PROMPT}]
     for user_msg, assistant_msg in chat_history:
         messages.append({"role": "user",      "content": user_msg})
         messages.append({"role": "assistant", "content": assistant_msg})
     messages.append({"role": "user", "content": message})
 
-    # Send to local Gemma 3 — no internet required
-    response = ollama.chat(model="gemma3:4b", messages=messages)
-    answer = response["message"]["content"]
+    stream = ollama.chat(model="gemma3:4b", messages=messages, stream=True)
 
-    # Append new exchange to history and clear input
-    chat_history.append((message, answer))
-    return "", chat_history
+    chat_history = chat_history + [(message, "")]
+    for chunk in stream:
+        token = chunk["message"]["content"]
+        chat_history[-1] = (message, chat_history[-1][1] + token)
+        yield "", chat_history
+
 
 
 def load_stats() -> str:
