@@ -577,20 +577,18 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
                 outputs=[chat_input, chatbot]
             )
 
-            # ── Wire up quick question buttons ──
-            for btn, question in [
-                (q1, "Quando devo acionar o SAMU 192? Quais são os critérios?"),
-                (q2, "Quais medicamentos são usados para hipertensão no protocolo SUS?"),
-                (q3, "Como fazer RCP (reanimação cardiopulmonar) corretamente?"),
-                (q4, "O que é o Escore de Framingham e como ele é calculado?"),
-                (q5, "Quais são os sinais de infarto no ECG que devo reconhecer?"),
-                (q6, "Qual é a meta de pressão arterial recomendada pelo SUS?"),
-            ]:
-                btn.click(
-                    fn=chat_with_beatsafe,
-                    inputs=[gr.Textbox(value=question, visible=False), chatbot],
-                    outputs=[chat_input, chatbot]
-                )
+            # ── Wire up quick question buttons — preenche o input e envia ──
+            def make_quick_question(q):
+                def fn(history):
+                    return chat_with_beatsafe(q, history)
+                return fn
+
+            q1.click(fn=make_quick_question("Quando devo acionar o SAMU 192? Quais são os critérios?"),         inputs=[chatbot], outputs=[chat_input, chatbot])
+            q2.click(fn=make_quick_question("Quais medicamentos são usados para hipertensão no protocolo SUS?"), inputs=[chatbot], outputs=[chat_input, chatbot])
+            q3.click(fn=make_quick_question("Como fazer RCP (reanimação cardiopulmonar) corretamente?"),         inputs=[chatbot], outputs=[chat_input, chatbot])
+            q4.click(fn=make_quick_question("O que é o Escore de Framingham e como ele é calculado?"),           inputs=[chatbot], outputs=[chat_input, chatbot])
+            q5.click(fn=make_quick_question("Quais são os sinais de infarto no ECG que devo reconhecer?"),       inputs=[chatbot], outputs=[chat_input, chatbot])
+            q6.click(fn=make_quick_question("Qual é a meta de pressão arterial recomendada pelo SUS?"),          inputs=[chatbot], outputs=[chat_input, chatbot])
 if __name__ == "__main__":
     app.launch(
         share=True,
