@@ -1,6 +1,5 @@
 # BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
-# Powered by Gemma 3 (4B) via Ollama - runs fully offline
-# Designed for Gemma 4 migration when available on Ollama
+# Powered by Gemma 4 (E4B) via Ollama - runs fully offline
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
 import sqlite3                  # Built-in database — no install needed
@@ -68,7 +67,7 @@ def save_triage(
         vitals:          Vital signs
         history:         Medical history
         medications:     Current medications
-        triage_result:   Full output from Gemma 3
+        triage_result:   Full output from Gemma 4
         ecg_analysis:    ECG analysis output (optional)
         pdf_path:        Path to the generated PDF (optional)
 
@@ -85,7 +84,7 @@ def save_triage(
     else:
         risk_level = "🟢 Baixo Risco"
 
-    data_hora = datetime.now().strftime("%d/%m/%Y %H:%M"  )  # ex: 16/05/2026 14:09
+    data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")  # ex: 16/05/2026 14:09
 
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute("""
