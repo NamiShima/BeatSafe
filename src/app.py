@@ -1,6 +1,5 @@
 # BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
-# Powered by Gemma 3 (4B) via Ollama - runs fully offline
-# Designed for Gemma 4 migration when available on Ollama
+# Powered by Gemma 4 (E4B) via Ollama - runs fully offline
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
 import gradio as gr              # Web interface library
@@ -208,7 +207,7 @@ def load_history(risk_filter: str) -> list:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CHATBOT — Gemma 3 offline answering clinical questions from health agents
+# CHATBOT — Gemma 4 offline answering clinical questions from health agents
 # Focused on SUS protocols, CAB-14, SAMU 192 and primary care procedures
 # ─────────────────────────────────────────────────────────────────────────────
 CHATBOT_SYSTEM_PROMPT = """
@@ -246,14 +245,13 @@ def chat_with_beatsafe(message: str, chat_history: list):
         messages.append({"role": "assistant", "content": assistant_msg})
     messages.append({"role": "user", "content": message})
 
-    stream = ollama.chat(model="gemma3:4b", messages=messages, stream=True)
+    stream = ollama.chat(model="gemma4:e4b", messages=messages, stream=True)
 
     chat_history = chat_history + [(message, "")]
     for chunk in stream:
         token = chunk["message"]["content"]
         chat_history[-1] = (message, chat_history[-1][1] + token)
         yield "", chat_history
-
 
 
 MEDICATION_SYSTEM_PROMPT = """
@@ -297,7 +295,7 @@ def suggest_medications(clinical_info: str):
         return
 
     stream = ollama.chat(
-        model="gemma3:4b",
+        model="gemma4:e4b",
         messages=[
             {"role": "system", "content": MEDICATION_SYSTEM_PROMPT},
             {"role": "user",   "content": f"Quadro clínico: {clinical_info}"}
@@ -337,15 +335,15 @@ def load_stats() -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# GRADIO UI — Two tabs: Nova Triagem | Histórico
+# GRADIO UI — Five tabs: Nova Triagem | Histórico | Assistente | Unidades | Medicamentos
 # ─────────────────────────────────────────────────────────────────────────────
 with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
-    # ── Header — shared across both tabs ──
+    # ── Header ──
     gr.HTML("""
         <div class="header-block">
             <h1>BEATSAFE</h1>
-            <p>Triagem Cardíaca Offline · Atenção Básica · Gemma 3 + Gemini Flash</p>
+            <p>Triagem Cardíaca Offline · Atenção Básica · Gemma 4 + Gemini Flash</p>
         </div>
     """)
 
@@ -422,7 +420,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
             with gr.Row():
                 with gr.Column():
                     symptom_output = gr.Textbox(
-                        label="Triagem por Sintomas — Gemma 3 (Local)",
+                        label="Triagem por Sintomas — Gemma 4 (Local)",
                         lines=15,
                         interactive=False,
                         elem_classes=["output-box"]
@@ -476,7 +474,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
             gr.HTML("""
                 <div class="footer-note">
                     O BeatSafe apoia agentes de saúde — não substitui avaliação médica.
-                    Triagem por sintomas roda offline via Gemma 3. Análise de ECG requer internet via Gemini Flash.
+                    Triagem por sintomas roda offline via Gemma 4. Análise de ECG requer internet via Gemini Flash.
                     Em caso de dúvida, encaminhe o paciente para avaliação presencial. · SAMU 192
                 </div>
             """)
@@ -536,11 +534,11 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
         # ══════════════════════════════════════════════════════════
         with gr.Tab("💬 Assistente"):
 
-            gr.HTML('<div class="section-title">Assistente Clínico — Gemma 3 (Offline)</div>')
+            gr.HTML('<div class="section-title">Assistente Clínico — Gemma 4 (Offline)</div>')
             gr.HTML("""
                 <div style="color:#888; font-size:0.78rem; margin-bottom:12px;">
                     Tire dúvidas sobre protocolos do SUS, sinais de alerta e medicamentos.
-                    Funciona 100% offline via Gemma 3.
+                    Funciona 100% offline via Gemma 4.
                 </div>
             """)
 
@@ -555,7 +553,7 @@ with gr.Blocks(css=CUSTOM_CSS, title="BeatSafe") as app:
 
             gr.HTML("""
                 <div class="footer-note">
-                    Opera offline via Gemma 3 · Não substitui avaliação médica · SAMU 192
+                    Opera offline via Gemma 4 · Não substitui avaliação médica · SAMU 192
                 </div>
             """)
 
