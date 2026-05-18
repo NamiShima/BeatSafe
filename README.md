@@ -2,7 +2,7 @@
 
 > **Gemma 4 Good Hackathon** · Health & Sciences Track · Ollama Special Technology Track
 
-**BeatSafe** is an offline-first cardiac triage assistant designed for community health agents working in Brazilian public health units (UBS — *Unidades Básicas de Saúde*), especially in underserved regions with limited or no internet access. It runs entirely on local hardware using **Gemma 3 (via Ollama)** for symptom triage and **Gemini Flash** for optional ECG image analysis.
+**BeatSafe** is an offline-first cardiac triage assistant designed for community health agents working in Brazilian public health units (UBS — *Unidades Básicas de Saúde*), especially in underserved regions with limited or no internet access. It runs entirely on local hardware using **Gemma 4 E4B (via Ollama)** for symptom triage and **Gemini Flash** for optional ECG image analysis.
 
 ---
 
@@ -20,7 +20,7 @@ A wrong decision costs lives. Getting it right consistently requires clinical kn
 
 BeatSafe gives community health agents a clinical decision support system that:
 
-- **Runs 100% offline** — no internet required for core triage (Gemma 3 via Ollama)
+- **Runs 100% offline** — no internet required for core triage (Gemma 4 E4B via Ollama)
 - **Speaks the language of the user** — fully in Portuguese, designed for non-medical professionals
 - **Is grounded in official Brazilian guidelines** — not general AI knowledge
 - **Generates a PDF report** shareable via WhatsApp with the supervising doctor
@@ -37,7 +37,7 @@ BeatSafe gives community health agents a clinical decision support system that:
 │  Triage Tab  │  Chatbot Tab │  Medication Tab        │
 │  (offline)   │  (offline)   │  (offline)             │
 ├──────────────┴──────────────┴────────────────────────┤
-│           Gemma 3:4b via Ollama (local)              │
+│           Gemma 4 E4B via Ollama (local)             │
 │           runs on CPU/GPU — no internet              │
 ├─────────────────────────────────────────────────────┤
 │  ECG Analysis (optional, requires internet)         │
@@ -59,12 +59,12 @@ BeatSafe gives community health agents a clinical decision support system that:
 
 ---
 
-## How Gemma 3 is Used
+## How Gemma 4 is Used
 
-Gemma 3:4b runs locally via Ollama and powers three features:
+Gemma 4 E4B runs locally via Ollama and powers three features:
 
 **1. Cardiac Triage (streaming)**
-The core feature. The agent fills in patient data (symptoms, vitals, history, medications) and Gemma generates a structured clinical assessment token-by-token, following a strict protocol format:
+The core feature. The agent fills in patient data (symptoms, vitals, history, medications) and Gemma 4 generates a structured clinical assessment token-by-token, following a strict protocol format:
 - Risk classification (High / Moderate / Low)
 - Clinical reasoning in plain Portuguese
 - Recommended actions
@@ -75,13 +75,13 @@ The core feature. The agent fills in patient data (symptoms, vitals, history, me
 An offline assistant that answers questions about SUS protocols, signs of cardiac emergency, medications, and when to call SAMU 192 — all in language accessible to non-medical agents.
 
 **3. Medication Suggestions**
-Based on the clinical scenario, Gemma suggests medications from the official Brazilian essential medicines list (RENAME), with mandatory disclaimer that prescription is a medical act.
+Based on the clinical scenario, Gemma 4 suggests medications from the official Brazilian essential medicines list (RENAME), with mandatory disclaimer that prescription is a medical act.
 
 ---
 
 ## Clinical Knowledge Base
 
-BeatSafe's system prompt is grounded in **6 official Brazilian clinical guidelines** — not generic AI training data:
+BeatSafe's system prompt is grounded in **7 official Brazilian clinical guidelines** — not generic AI training data:
 
 | Guideline | Year | Key Contribution |
 |---|---|---|
@@ -114,7 +114,7 @@ This is what separates BeatSafe from a generic LLM wrapper: the model is instruc
 - No data ever sent to external servers
 
 ### 💬 Assistente (Chatbot)
-- Offline clinical Q&A powered by Gemma 3
+- Offline clinical Q&A powered by Gemma 4
 - Focused on SUS protocols, SAMU criteria, cardiac symptoms
 
 ### 🏥 Unidades Próximas (Nearby Units)
@@ -124,7 +124,7 @@ This is what separates BeatSafe from a generic LLM wrapper: the model is instruc
 ### 💊 Medicamentos (Medications)
 - Protocol-based medication suggestions (RENAME/CAB-14)
 - Mandatory disclaimer displayed before any suggestion
-- Streaming response via Gemma 3
+- Streaming response via Gemma 4
 
 ---
 
@@ -133,7 +133,7 @@ This is what separates BeatSafe from a generic LLM wrapper: the model is instruc
 ### Requirements
 - Python 3.10+
 - [Ollama](https://ollama.com) installed and running
-- Gemma 3:4b pulled: `ollama pull gemma3:4b`
+- Gemma 4 E4B pulled: `ollama pull gemma4:e4b`
 - Google API key (for ECG analysis only)
 
 ### Installation
@@ -148,24 +148,24 @@ python app.py
 
 ### Environment Variables
 ```bash
-GOOGLE_API_KEY=your_key_here   # optional — only for ECG analysis
+GEMINI_API_KEY=your_key_here   # optional — only for ECG analysis
 ```
 
 ---
 
 ## Design Decisions
 
-**Why Gemma 3:4b instead of a larger model?**
-The target hardware is a standard laptop at a UBS unit. Gemma 3:4b runs on 2.5GB RAM, responds in seconds, and produces clinically coherent output when properly prompted. We tested Gemma 3:12b but it caused 99% RAM usage on typical field hardware — a dealbreaker.
+**Why Gemma 4 E4B?**
+The target hardware is a standard laptop at a UBS unit. Gemma 4 E4B runs on 6GB VRAM or 12GB RAM, responds quickly, and produces clinically coherent output when properly prompted. The E4B variant was specifically designed for on-device deployment — ideal for offline-first applications where internet access is a medical necessity, not a given.
 
 **Why Gradio instead of a native app?**
-Gradio 5.x runs in any browser, requires no installation by the end user, and supports streaming natively. The agent just opens a URL. We downgraded from 6.x to 5.29.0 after discovering critical rendering issues with tabs and CSS in the newer version.
+Gradio runs in any browser, requires no installation by the end user, and supports streaming natively. The agent just opens a URL. One laptop can serve an entire small clinic over a local network.
 
 **Why SQLite instead of a cloud database?**
-Privacy and offline resilience. Patient data never leaves the device. The agent doesn't need internet to review history or generate statistics.
+Privacy and offline resilience. Patient data never leaves the device. The agent doesn't need internet to review history or generate statistics. LGPD (Brazil's data protection law) compliance by design.
 
-**Why a hybrid model (Gemma + Gemini)?**
-ECG analysis requires multimodal vision capability. Gemma 3:4b does not support image input. Gemini Flash handles this cloud-side when internet is available, while core triage stays fully offline. The system degrades gracefully — if there's no internet, ECG analysis is simply skipped.
+**Why a hybrid model (Gemma 4 + Gemini Flash)?**
+ECG analysis requires multimodal vision capability. Gemma 4 E4B handles text triage fully offline. Gemini Flash handles ECG image analysis cloud-side when internet is available. The system degrades gracefully — if there's no internet, ECG analysis is simply skipped and core triage continues normally.
 
 ---
 
@@ -174,9 +174,15 @@ ECG analysis requires multimodal vision capability. Gemma 3:4b does not support 
 BeatSafe directly addresses the **Health & Sciences** and **Ollama Special Technology** tracks:
 
 - **Health & Sciences**: democratizes clinical decision support for the 300,000+ community health agents in Brazil who currently operate without AI tools
-- **Ollama**: demonstrates Gemma 3 running locally on consumer hardware, with a real production use case where offline capability is not optional — it's a medical necessity
+- **Ollama**: demonstrates Gemma 4 running locally on consumer hardware, with a real production use case where offline capability is not optional — it's a medical necessity
 
 The PDF report feature enables continuity of care: the agent can share the triage result with a supervising doctor via WhatsApp, creating a documented clinical handoff even in areas with no EHR systems.
+
+---
+
+## Live Demo
+
+**Hugging Face Spaces:** https://huggingface.co/spaces/NamiShima/BeatSafe
 
 ---
 
