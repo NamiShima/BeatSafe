@@ -1,6 +1,5 @@
 # BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
-# Powered by Gemma 3 (4B) via Ollama - runs fully offline
-# Designed for Gemma 4 migration when available on Ollama
+# Powered by Gemma 4 (E4B) via Ollama - runs fully offline
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
 import ollama          # Local inference library - connects to Gemma running on the machine
@@ -290,12 +289,12 @@ Em caso de dúvida sobre gravidade, sempre oriente encaminhar para avaliação p
 
 def triage(patient_info: str) -> str:
     """
-    Sends patient data to Gemma 3 running locally via Ollama.
+    Sends patient data to Gemma 4 running locally via Ollama.
     Returns a structured cardiac risk assessment in Portuguese.
     """
 
     response = ollama.chat(
-        model="gemma3:4b",
+        model="gemma4:e4b",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": patient_info}
@@ -306,7 +305,7 @@ def triage(patient_info: str) -> str:
 
 def triage_stream(patient_info: str):
     """
-    Streaming version of triage() — yields partial text as Gemma generates it.
+    Streaming version of triage() — yields partial text as Gemma 4 generates it.
     Used by the Gradio interface so the user sees the response appearing
     word by word instead of waiting for the full response.
 
@@ -318,7 +317,7 @@ def triage_stream(patient_info: str):
     """
 
     stream = ollama.chat(
-        model="gemma3:4b",
+        model="gemma4:e4b",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": patient_info}
@@ -350,7 +349,7 @@ def triage_and_save_pdf(
     """
     Runs the full BeatSafe workflow for one patient:
       1. Assembles patient data into a structured prompt
-      2. Sends it to Gemma 3 (local, offline) for triage
+      2. Sends it to Gemma 4 (local, offline) for triage
       3. Generates a formatted PDF report with all findings
 
     Args:
@@ -388,7 +387,7 @@ def triage_and_save_pdf(
 
     print(f"\n🫀 Iniciando triagem para: {patient_name or 'Paciente'}...")
 
-    # Step 2 — Run offline triage via Gemma 3 (Ollama)
+    # Step 2 — Run offline triage via Gemma 4 (Ollama)
     triage_result = triage(patient_info)
     print("✅ Triagem concluída.")
 
@@ -433,7 +432,8 @@ if __name__ == "__main__":
 
     print("🫀 BeatSafe — Offline Cardiac Triage for Brazilian Primary Care")
     print("=" * 60)
-    print("Clinical source: CAB-14 (Ministry of Health) + SAMU 192 DF Protocol")
+    print("Offline component: Gemma 4 (E4B) via Ollama")
+    print("Cloud component:   Gemini 2.5 Flash via Google AI API (ECG only)")
     print("=" * 60)
 
     # ── Case 1: Acute chest pain — high risk emergency (Protocol C01) ──
