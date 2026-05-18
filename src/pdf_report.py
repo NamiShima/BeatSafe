@@ -1,6 +1,5 @@
 # BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
-# Powered by Gemma 3 (4B) via Ollama - runs fully offline
-# Designed for Gemma 4 migration when available on Ollama
+# Powered by Gemma 4 (E4B) via Ollama - runs fully offline
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
 from fpdf import FPDF                  # PDF generation library
@@ -201,7 +200,7 @@ def truncate_triage(text: str, max_chars: int = 900) -> str:
     risk level, alert signs, recommended conduct and referral.
 
     Args:
-        text:      Full triage output text from Gemma 3
+        text:      Full triage output text from Gemma 4
         max_chars: Maximum characters to include (default 900)
 
     Returns:
@@ -279,8 +278,6 @@ def add_section(pdf: FPDF, title: str, content: str):
     pdf.ln(2)
 
 
-
-
 def generate_pdf(
     patient_name: str,
     age: int,
@@ -310,7 +307,7 @@ def generate_pdf(
         vitals:               Vital signs string
         history:              Medical history and comorbidities
         medications:          Current medications
-        symptom_triage:       Output from Gemma 3 triage function
+        symptom_triage:       Output from Gemma 4 triage function
         agent_name:           Name of the community health agent (optional)
         agent_id:             Registration number of the agent (optional)
         ecg_analysis:         Output from ECG analysis (optional)
@@ -394,7 +391,7 @@ def generate_pdf(
     pdf.ln(2)
 
     # ── Triagem por sintomas — principal conteúdo clínico ──
-    add_section(pdf, "TRIAGEM POR SINTOMAS - Gemma 3 (Local, Offline)", symptom_triage)
+    add_section(pdf, "TRIAGEM POR SINTOMAS - Gemma 4 (Local, Offline)", symptom_triage)
 
     # ── ECG — apenas se houver imagem ──
     if ecg_analysis and ecg_analysis != "Nenhuma imagem de ECG fornecida.":
@@ -444,7 +441,7 @@ def generate_pdf(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TEST BLOCK — Generates a sample report when run directly: python report_pdf.py
+# TEST BLOCK — Generates a sample report when run directly: python pdf_report.py
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
 
@@ -479,15 +476,15 @@ SAMU 192 - URGENCIA MAXIMA. Paciente necessita de ECG, marcadores cardiacos e po
     output = generate_pdf(
         patient_name="Joao Silva",
         age=58,
-        sex="Male",                          # Will be auto-translated to "Masculino"
+        sex="Male",
         chief_complaint="Dor no peito ha 2 horas, tipo aperto, irradiando para braco esquerdo",
         symptoms="Sudorese fria, falta de ar, nausea",
         vitals="PA 165/105 mmHg, FC 102 bpm, SatO2 91%",
         history="Hipertensao ha 10 anos, Diabetes tipo 2, ex-tabagista",
         medications="Metformina, Losartana",
         symptom_triage=sample_triage,
-        agent_name="Maria Souza",            # Community health agent name
-        agent_id="ACS-2024-0381",            # Agent registration number
+        agent_name="Maria Souza",
+        agent_id="ACS-2024-0381",
         output_path="test_report.pdf"
     )
 
