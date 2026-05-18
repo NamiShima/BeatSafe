@@ -1,6 +1,5 @@
 # BeatSafe - Cardiac Triage AI for Offline Primary Care Units in Brazil
-# Powered by Gemma 3 (4B) via Ollama - runs fully offline
-# Designed for Gemma 4 migration when available on Ollama
+# Powered by Gemma 4 (E4B) via Ollama - runs fully offline
 # Author: NamiShima
 # Competition: Gemma 4 Good Hackathon 2026
 
@@ -24,10 +23,9 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # ─────────────────────────────────────────────────────────────────────────────
 # MODEL SELECTION — Gemini 2.5 Flash handles ECG image analysis (cloud, optional)
 # This is the multimodal component of BeatSafe's hybrid architecture:
-#   - Core triage: Gemma 3:4b via Ollama (100% offline, no internet required)
+#   - Core triage: Gemma 4 (E4B) via Ollama (100% offline, no internet required)
 #   - ECG analysis: Gemini 2.5 Flash via API (cloud, only when internet available)
 # ECG analysis is optional — BeatSafe degrades gracefully without it.
-# Future goal: migrate to Gemma 4 multimodal via Ollama when available locally.
 # ─────────────────────────────────────────────────────────────────────────────
 GEMINI_MODEL = "models/gemini-2.5-flash"
 
@@ -88,7 +86,7 @@ Seja claro, direto e use linguagem acessivel para agentes de saude nao especiali
 # ─────────────────────────────────────────────────────────────────────────────
 # ECG COMBINATION PROMPT — Merges ECG findings with symptom triage
 # This is the core of BeatSafe's hybrid architecture:
-#   Gemma 3 (offline) handles symptom reasoning
+#   Gemma 4 (offline) handles symptom reasoning
 #   Gemini Flash (cloud) handles image analysis
 #   Together they produce a more complete clinical picture
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +129,7 @@ def analyze_ecg(image_path: str) -> str:
 
     This is the optional cloud component of BeatSafe — only runs when
     the health agent has internet access and uploads an ECG image.
-    Core triage (main.py) always runs offline via Gemma 3.
+    Core triage (main.py) always runs offline via Gemma 4.
 
     Args:
         image_path: File path to the ECG image (JPG or PNG)
@@ -164,11 +162,11 @@ def analyze_ecg(image_path: str) -> str:
 
 def combined_analysis(symptom_triage: str, ecg_analysis: str) -> str:
     """
-    Combines symptom triage output (from Gemma 3 local) with ECG analysis
+    Combines symptom triage output (from Gemma 4 local) with ECG analysis
     (from Gemini Flash cloud) into a single unified clinical recommendation.
 
     BeatSafe's hybrid design:
-      - Gemma 3 via Ollama: offline symptom triage (always available)
+      - Gemma 4 via Ollama: offline symptom triage (always available)
       - Gemini 2.5 Flash via API: ECG image analysis (when internet available)
       - This function: merges both into one final recommendation
 
@@ -197,7 +195,7 @@ def combined_analysis(symptom_triage: str, ecg_analysis: str) -> str:
 def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
     """
     Runs the complete BeatSafe pipeline for a patient with an ECG image:
-        Step 1 — Symptom triage via Gemma 3 local (offline, always runs)
+        Step 1 — Symptom triage via Gemma 4 local (offline, always runs)
         Step 2 — ECG image analysis via Gemini 2.5 Flash (cloud, optional)
         Step 3 — Combined final recommendation via Gemini 2.5 Flash
 
@@ -207,7 +205,7 @@ def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
 
     Returns:
         Dictionary with three keys:
-            - symptom_triage: result from Gemma 3 (offline)
+            - symptom_triage: result from Gemma 4 (offline)
             - ecg_analysis:   result from Gemini Flash (multimodal)
             - final:          unified combined recommendation
     """
@@ -215,8 +213,8 @@ def full_beatsafe_analysis(patient_info: str, image_path: str) -> dict:
     # Import here to avoid circular imports between ecg.py and main.py
     from main import triage
 
-    # Step 1 — Offline symptom triage using local Gemma 3 model
-    print("Step 1/3 — Running symptom triage with Gemma 3 (local, offline)...")
+    # Step 1 — Offline symptom triage using local Gemma 4 model
+    print("Step 1/3 — Running symptom triage with Gemma 4 (local, offline)...")
     symptom_result = triage(patient_info)
 
     # Step 2 — Cloud ECG analysis using Gemini 2.5 Flash multimodal
@@ -243,7 +241,7 @@ if __name__ == "__main__":
     print("BeatSafe — ECG Multimodal Analysis Module")
     print("=" * 50)
     print("Cloud component: Gemini 2.5 Flash via Google AI API")
-    print("Offline component: Gemma 3:4b via Ollama (see main.py)")
+    print("Offline component: Gemma 4 (E4B) via Ollama (see main.py)")
     print("=" * 50)
 
     test_image_path = "test_ecg.jpg"
